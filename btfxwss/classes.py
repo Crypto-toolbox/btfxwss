@@ -10,6 +10,9 @@ import time
 import hashlib
 import hmac
 import queue
+from collections import defaultdict
+from itertools import islice
+
 from threading import Thread
 
 # Import Third-Party
@@ -26,14 +29,58 @@ from btfxwss.exceptions import InvalidEventError, InvalidBookPrecisionError
 from btfxwss.exceptions import UnknownEventError, UnknownWSSError
 from btfxwss.exceptions import UnknownWSSInfo, AlreadyRegisteredError
 from btfxwss.exceptions import NotRegisteredError, UnknownChannelError
+from btfxwss.exceptions import FaultyPayloadError
 
 # Init Logging Facilities
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+
+
+class Orders:
+    def __init__(self, reverse=False):
+        self._orders = {}
+        self._reverse = reverse
+
+    def __call__(self):
+        return [self._orders[i]() for i in sorted(self._orders.keys(),
+                                                  reverse=self._reverse)]
+
+    def __repr__(self):
+        return str(self.__call__())
+
+    def __setitem__(self, key, value):
+        self._orders[key] = value
+
+    def __getitem__(self, key):
+        keys = sorted(self._orders.keys(), reverse=self._reverse)
+
+        if isinstance(key, int):
+            # an index was passed
+            key, = islice(keys, key, key + 1)
+            return self._orders[key]
+        elif isinstance(key, str) or isinstance(key, float):
+            return self._orders[key]
+        elif not isinstance(key, slice):
+            raise TypeError()
+
+        return [self._orders[key] for key in
+                islice(keys, key.start, key.stop,
+                       key.step)]
+
+    def pop(self, key):
+        return self._orders.pop(key)
+
+
+class Orderbook:
+    def __init__(self):
+        self.bids = Orders(reverse=True)
+        self.asks = Orders()
 
 
 class BtfxWss:
 
-    def __init__(self, key='', secret='', addr='wss://api.bitfinex.com/ws/2'):
+    def __init__(self, key='', secret='', addr='wss://api.bitfinex.com/ws/2',
+                 output_dir='/tmp/'):
         self.key = key
         self.secret = secret
         self.conn = None
@@ -44,24 +91,30 @@ class BtfxWss:
         self._paused = False
         self.q = queue.Queue()
         self.receiver_thread = None
-        self.main_thread = None
+        self.processing_thread = None
+        self.tar_dir = output_dir
+        self.ping_timer = None
+        self.timeout = 5
 
-        # Set up book keeping variables
+        # Set up book-keeping variables & configurations
         self.api_version = None
         self.channels = {}  # Dict for matching channel ids with handlers
+        self.channel_states = {}  # Dict for status of each channel (alive/dead)
         self.channel_configs = {}  # Variables, as set by subscribe command
         self.wss_config = {}  # Config as passed by 'config' command
 
-        self.tickers = {}
-        self.books = {}
+        self.tickers = defaultdict(list)
+        self.books = defaultdict(Orderbook)
         self.raw_books = {}
-        self.trades = {}
-        self.candles = {}
+        self.trades = defaultdict(list)
+        self.candles = defaultdict(list)
 
-        self._event_handlers = {'error': self._handle_error,
+        self._event_handlers = {'error': self._raise_error,
                                 'unsubscribed': self._handle_unsubscribed,
                                 'subscribed': self._handle_subscribed,
-                                'info': self._handle_info}
+                                'info': self._handle_info,
+                                'pong': self._handle_pong,
+                                'conf': self._handle_conf}
         self._data_handlers = {'ticker': self._handle_ticker,
                                'book': self._handle_book,
                                'raw_book': self._handle_raw_book,
@@ -82,36 +135,86 @@ class BtfxWss:
                                '10011': InvalidBookPrecisionError,
                                '10012': InvalidBookLengthError}
 
+    def _check_ping(self):
+        """
+        Checks if the ping command timed out and raises TimeoutError if so.
+        :return:
+        """
+        if time.time() - self.ping_timer > self.timeout:
+            raise TimeoutError("Ping Command timed out!")
+
     def pause(self):
+        """
+        Pauses the client
+        :return:
+        """
         self._paused = True
+        log.info("BtfxWss.pause(): Pausing client..")
 
     def unpause(self):
+        """
+        Unpauses the client
+        :return:
+        """
         self._paused = False
+        log.info("BtfxWss.pause(): Unpausing client..")
 
     def start(self):
+        """
+        Start the websocket client threads
+        :return:
+        """
         self.running = True
-        self.conn = create_connection(self.addr, timeout=0.1)
+        log.info("BtfxWss.start(): Initializing Websocket connection..")
+        self.conn = create_connection(self.addr, timeout=1)
 
+        log.info("BtfxWss.start(): Initializing receiver thread..")
         if not self.receiver_thread:
-            self.receiver_thread = Thread(target=self.receiver)
+            self.receiver_thread = Thread(target=self.receive)
             self.receiver_thread.start()
+        else:
+            log.info("BtfxWss.start(): Thread not started! "
+                     "self.receiver_thread is populated!")
 
-        if not self.main_thread:
-            self.main_thread = Thread(target=self.main)
-            self.main_thread.start()
+        log.info("BtfxWss.start(): Initializing processing thread..")
+        if not self.processing_thread:
+            self.processing_thread = Thread(target=self.process)
+            self.processing_thread.start()
+        else:
+            log.info("BtfxWss.start(): Thread not started! "
+                     "self.processing_thread is populated!")
 
     def stop(self):
+        """
+        Stop all threads and modules of the client.
+        :return:
+        """
+        log.info("BtfxWss.stop(): Stopping client..")
         self.running = False
+        log.info("BtfxWss.stop(): Joining receiver thread..")
         self.receiver_thread.join()
-        self.main_thread.join()
+        log.info("BtfxWss.stop(): Joining processing thread..")
+        self.processing_thread.join()
+        log.info("BtfxWss.stop(): Closing websocket conection..")
         self.conn.close()
         self.conn = None
+        log.info("BtfxWss.stop(): Done!")
 
     def restart(self):
+        """
+        Restarts client.
+        :return:
+        """
+        log.info("BtfxWss.restart(): Restarting client..")
         self.stop()
         self.start()
 
-    def receiver(self):
+    def receive(self):
+        """
+        Receives incoming websocket messages, and puts them on the Client queue
+        for processing.
+        :return:
+        """
         while self.running:
             if self._paused:
                 time.sleep(0.5)
@@ -120,61 +223,78 @@ class BtfxWss:
                 raw = self.conn.recv()
             except WebSocketTimeoutException:
                 continue
-            self.q.put(json.loads(raw))
+            msg = time.time(), json.loads(raw)
+            self.q.put(msg)
 
-    def main(self):
+    def process(self):
+        """
+        Processes the Client queue, and passes the data to the respective
+        methods.
+        :return:
+        """
         while self.running:
+            if self.ping_timer:
+                try:
+                    self._check_ping()
+                except TimeoutError:
+                    log.exception("BtfxWss.ping(): TimedOut! (%ss)" %
+                                  self.ping_timer)
             try:
-                msg = self.q.get(timeout=0.1)
+                ts, data = self.q.get(timeout=0.1)
             except queue.Empty:
                 continue
-            if isinstance(msg, list):
-                self.handle_data(msg)
+            if isinstance(data, list):
+                self.handle_data(ts, data)
             else:  # Not a list, hence it could be a response
                 try:
-                    self.handle_response(msg)
+                    self.handle_response(ts, data)
                 except UnknownEventError:
                     # We don't know what this is - Raise an error and log data!
-                    log.debug("main() - UnknownEventError: %s" % msg)
+                    log.critical("main() - UnknownEventError: %s", data)
                     raise
 
     ##
     # Response Message Handlers
     ##
 
-    def handle_response(self, resp):
+    def handle_response(self, ts, resp):
+        """
+        Passes a response message to the corresponding event handler, and also
+        takes care of handling errors raised by the _raise_error handler.
+        :param ts: timestamp, declares when data was received by the client
+        :param resp: dict, containing info or error keys, among others
+        :return:
+        """
         event = resp['event']
         try:
-            self._event_handlers[event](**resp)
+            self._event_handlers[event](ts, **resp)
+        # Handle Non-Critical Errors
+        except (InvalidChannelError, InvalidPairError, InvalidBookLengthError,
+                InvalidBookPrecisionError) as e:
+            print(e)
+        except (NotSubscribedError, AlreadySubscribedError) as e:
+            print(e)
+        except GenericSubscriptionError as e:
+            print(e)
+
+        # Handle Critical Errors
+        except InvalidEventError as e:
+            log.critical("handle_response(): %s; %s", e, resp)
+            raise SystemError(e)
         except KeyError:
             # unsupported event!
             raise UnknownEventError("handle_response(): %s" % resp)
-        except (InvalidChannelError, InvalidPairError, InvalidBookLengthError,
-                InvalidBookPrecisionError) as e:
-            print("Your request contained one or more invalid values for the "
-                  "request you've made. Check your parameters and"
-                  "try again.")
-        except InvalidEventError as e:
-            log.critical("handle_response(): An invalid Event has been sent to "
-                         "the API! Check function parameters and code!")
-            log.debug("handle_response(): %s" % resp)
-            raise SystemError(e)
-        except (NotSubscribedError, AlreadySubscribedError) as e:
-            print("It seems you're trying to (un)subscribe from a channel "
-                  "you're not currently (un)subscribed to! Try Btfx.channels(),"
-                  " for a list of channels you've subscribed to!")
-        except GenericSubscriptionError as e:
-            log.error("handle_response(): An Generic Subscription Error has "
-                      "occurred - contact Bitfinex support for more "
-                      "information!")
-            log.debug("handle_response(): %s" % resp)
-            print("A General Subscription Error has occurred: %s" % e)
 
-    def _handle_subscribed(self, chanId=None, channel=None, **kwargs):
+    def _handle_subscribed(self, *args,  chanId=None, channel=None, **kwargs):
+        """
+        Handles responses to subscribe() commands - registers a channel id with
+        the client and assigns a data handler to it.
+        :param chanId: int, represent channel id as assigned by server
+        :param channel: str, represents channel name
+        """
+        log.debug("_handle_subscribed: %s - %s - %s", chanId, channel, kwargs)
         if chanId in self.channels:
-            raise AlreadyRegisteredError("_handle_subscribed: Channel ID %s "
-                                         "already registered! Restart websocket "
-                                         "to empty cache!" % chanId)
+            raise AlreadyRegisteredError()
 
         channel_key = ('raw_'+channel
                        if 'pair' in kwargs and channel == 'book'
@@ -182,154 +302,214 @@ class BtfxWss:
         try:
             self.channels[chanId] = self._data_handlers[channel_key]
         except KeyError:
-            raise UnknownChannelError("_handle_subscribed(): "
-                                      "Key %s not in self.channels!" %
-                                      channel_key)
+            raise UnknownChannelError()
 
-    def _handle_unsubscribed(self, chanId=None, **kwargs):
+    def _handle_unsubscribed(self, *args, chanId=None, **kwargs):
+        """
+        Handles responses to unsubscribe() commands - removes a channel id from
+        the client.
+        :param chanId: int, represent channel id as assigned by server
+        """
+        log.debug("_handle_subscribed: %s - %s", chanId, kwargs)
         try:
             self.channels.pop(chanId)
         except KeyError:
-            raise NotRegisteredError("_handle_unsubscribed(): Channel ID %s "
-                                          "was not registered with the client! "
-                                          "(self.channels: %s)" %
-                                          (chanId, list(self.channels.keys())))
+            raise NotRegisteredError()
 
-    def _handle_error(self, **kwargs):
-        error_code = str(kwargs['code'])
+    def _raise_error(self, *args, **kwargs):
+        """
+        Raises the proper exception for passed error code. These must then be
+        handled by the layer calling _raise_error()
+        """
+        log.debug("_raise_error(): %s" % kwargs)
         try:
-            error_msg = kwargs['msg']
-        except KeyError:
-            error_msg = error_code
-
-        log.error("_handle_error(): %s" % error_code)
-        log.debug("_handle_error(): %s: Attached message: %s" % (error_code, error_msg))
+            error_code = str(kwargs['code'])
+        except KeyError as e:
+            raise FaultyPayloadError('_raise_error(): %s' % kwargs)
 
         try:
-            raise self._code_handlers[error_code](error_msg)
+            raise self._code_handlers[error_code]()
         except KeyError:
-            log.critical("_handle_error(): %s" % error_code)
-            log.debug("_handle_error(): %s: Attached message: %s" %
-                      (error_code, error_msg))
-            raise UnknownWSSError("%s" % kwargs)
+            raise UnknownWSSError()
 
-    def _handle_info(self, **kwargs):
+    def _handle_info(self, *args, **kwargs):
+        """
+        Handles info messages and executed corresponding code
+        """
         if 'version' in kwargs:
             # set api version number and exit
             self.api_version = kwargs['version']
             print("Initialized API with version %s" % self.api_version)
             return
-
-        info_code = str(kwargs['code'])
-        if not info_code.startswith('2'):
-            raise ValueError("Info Code must start with 2! %s" % kwargs)
         try:
-            info_msg = kwargs['msg']
+            info_code = str(kwargs['code'])
         except KeyError:
-            info_msg = info_code
+            raise FaultyPayloadError("_handle_info: %s" % kwargs)
 
-        log.info("_handle_info(): %s: Attached message: %s" %
-                 (info_code, info_msg))
+        if not info_code.startswith('2'):
+            raise ValueError("Info Code must start with 2! %s", kwargs)
+
+        output_msg = "_handle_info(): %s" % kwargs
+        log.info(output_msg)
 
         try:
             self._code_handlers[info_code]()
         except KeyError:
-            log.error("_handle_info(): %s" % info_code)
-            log.debug("_handle_info(): %s: %s" %
-                      (info_code, kwargs))
-            raise UnknownWSSInfo("_handle_info(): %s" % kwargs)
+            raise UnknownWSSInfo(output_msg)
+
+    def _handle_pong(self, ts, *args, **kwargs):
+        """
+        Handles pong messages; resets the self.ping_timer variable and logs
+        info message.
+        :param ts: timestamp, declares when data was received by the client
+        :return:
+        """
+        log.info("BtfxWss.ping(): Ping received! (%ss)",
+                 ts - self.ping_timer)
+        self.ping_timer = None
+
+    def _handle_conf(self, ts, *args, **kwargs):
+        pass
 
     ##
     # Data Message Handlers
     ##
 
-    def handle_data(self, msg):
-        chan_id, *data = msg
+    def handle_data(self, ts, msg):
+        """
+        Passes msg to responding data handler, determined by its channel id,
+        which is expected at index 0.
+        :param ts: timestamp, declares when data was received by the client
+        :param msg: list or dict of websocket data
+        :return:
+        """
         try:
-            self.channels[chan_id](chan_id, data)
+            chan_id, *data = msg
+        except ValueError as e:
+            # Too many or too few values
+            raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
+        self.channel_states[chan_id] = ts
+        if msg == 'hb':
+            self._handle_hearbeat(ts, chan_id)
+            return
+        try:
+            self.channels[chan_id](ts, chan_id, data)
         except KeyError:
             raise NotRegisteredError("handle_data: %s not registered - "
                                      "Payload: %s" % (chan_id, msg))
 
-    def _handle_ticker(self, chan_id, data):
-        b, b_size, a, a_size, change_24h, change_24_perc, last, vol, h, l = data
+    def _handle_hearbeat(self, ts, chan_id, **kwargs):
+        pass
 
-    def _handle_book(self, chan_id, data):
+    def _handle_ticker(self, ts, chan_id, data):
+        entry = (*data, ts,)
+        self.tickers[chan_id].append(entry)
+
+    def _handle_book(self, ts, chan_id, data):
         if isinstance(data[0][0], list):
             # snapshot
             for order in data:
                 price, count, amount = order
-                if amount > 0:
-                    # sort in bids
-                    pass
-                else:
-                    # sort in asks
-                    pass
+                side = (self.books[chan_id].bids if amount > 0
+                        else self.books[chan_id].asks)
+                side[str(price)] = (price, amount, count, ts)
         else:
             # update
             price, count, amount = data
+            side = (self.books[chan_id].bids if amount > 0
+                    else self.books[chan_id].asks)
             if count == 0:
                 # remove from book
-                pass
+                try:
+                    side.pop(str(price))
+                except KeyError:
+                    # didn't exist, move along
+                    pass
             else:
                 # update in book
-                pass
+                side[str(price)] = (price, amount, count, ts)
 
-    def _handle_raw_book(self, chan_id, data):
+    def _handle_raw_book(self, ts, chan_id, data):
         if isinstance(data[0][0], list):
             # snapshot
-            pass
+            for order in data:
+                order_id, price, amount = order
+                side = (self.raw_books[chan_id].bids if amount > 0
+                        else self.raw_books[chan_id].asks)
+                side[str(order_id)] = (order_id, price, amount, ts)
         else:
-            # update
+            # update in book
             order_id, price, amount = data
+            side = (self.raw_books[chan_id].bids if amount > 0
+                    else self.raw_books[chan_id].asks)
             if price == 0:
                 # remove from book
-                pass
+                try:
+                    side.pop(str(order_id))
+                except KeyError:
+                    # didn't exist, move along
+                    pass
             else:
-                # update in book
-                pass
+                side[str(order_id)] = (order_id, price, amount, ts)
 
-    def _handle_trades(self, chan_id, data):
+    def _handle_trades(self, ts, chan_id, data):
 
         if isinstance(data[0], list):
             # snapshot
             for trade in data:
                 order_id, mts, amount, price = trade
+                self.trades[chan_id][order_id] = (order_id, mts, amount, price)
         else:
-            # update
+            # single data
             _type, trade = data
-            execution_update = True if _type == 'tu' else False
-            order_id, mts, amount, price = trade
-            pass
+            self.trades[chan_id][trade[0]] = trade
 
-    def _handle_candles(self, chan_id, data):
+    def _handle_candles(self, ts, chan_id, data):
         if isinstance(data[0][0], list):
             # snapshot
             for candle in data:
-                mts, opn, clse, high, low, vol = candle
-                pass
+                self.candles[chan_id].append(candle)
         else:
             # update
-            mts, opn, clse, high, low, vol = data
+            self.candles[chan_id].append(data)
 
     ##
     # Commands
     ##
 
     def ping(self):
+        self.ping_timer = time.time()
         self.conn.send(json.dumps({'event': 'ping'}))
 
-    def config(self, **kwargs):
-        q = {'event': 'conf'}
+    def config(self, decimals_as_strings=True, ts_as_dates=False,
+               sequencing=False, **kwargs):
+        flags = 0
+        if decimals_as_strings:
+            flags += 8
+        if ts_as_dates:
+            flags += 32
+        if sequencing:
+            flags += 65536
+        q = {'event': 'conf', 'flags': flags}
         q.update(kwargs)
         self.conn.send(json.dumps(q))
 
     def _subscribe(self, channel_name, **kwargs):
+        if not self.conn:
+            log.error("_subscribe(): Cannot subscribe to channel,"
+                      "since the client has not been started!")
+            return
         q = {'event': 'subscribe', 'channel': channel_name}
         q.update(**kwargs)
+        print(q)
+        print("sending subscribe command!")
         self.conn.send(json.dumps(q))
 
     def _unsubscribe(self, channel_name):
+        if not self.conn:
+            log.error("_unsubscribe(): Cannot unsubscribe from channel,"
+                      "since the client has not been started!")
+            return
         try:
             chan_id = self.channels.pop(channel_name)
         except KeyError:
@@ -338,7 +518,7 @@ class BtfxWss:
         self.conn.send(json.dumps(q))
 
     def ticker(self, pair, **kwargs):
-        self._subscribe(pair, **kwargs)
+        self._subscribe('ticker', symbol=pair, **kwargs)
 
     def order_book(self, pair, **kwargs):
         self._subscribe('book', symbol=pair, **kwargs)
@@ -364,7 +544,3 @@ class BtfxWss:
                    'authNonce': nonce, 'authSig': signature}
         payload.update(**kwargs)
         self.conn.send(json.dumps(payload))
-
-
-
-
