@@ -95,6 +95,7 @@ class BtfxWss:
         self.tar_dir = output_dir
         self.ping_timer = None
         self.timeout = 5
+        self._heartbeats = {}
 
         # Set up book-keeping variables & configurations
         self.api_version = None
@@ -134,6 +135,18 @@ class BtfxWss:
                                '10401': NotSubscribedError,
                                '10011': InvalidBookPrecisionError,
                                '10012': InvalidBookLengthError}
+
+    def _check_heartbeats(self, ts, *args, **kwargs):
+        """
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id:
+        :return:
+        """
+        for chan_id in self._heartbeats:
+            if ts - self._heartbeats[chan_id] > 2:
+                log.warning("BtfxWss.heartbeats: Channel %s hasn't send a "
+                            "heartbeat in %s seconds!",
+                            chan_id, ts - self._heartbeats[chan_id])
 
     def _check_ping(self):
         """
@@ -232,26 +245,34 @@ class BtfxWss:
         methods.
         :return:
         """
+
         while self.running:
+
             if self.ping_timer:
                 try:
                     self._check_ping()
                 except TimeoutError:
                     log.exception("BtfxWss.ping(): TimedOut! (%ss)" %
                                   self.ping_timer)
+
+            skip_processing = False
+
             try:
                 ts, data = self.q.get(timeout=0.1)
             except queue.Empty:
-                continue
-            if isinstance(data, list):
-                self.handle_data(ts, data)
-            else:  # Not a list, hence it could be a response
-                try:
-                    self.handle_response(ts, data)
-                except UnknownEventError:
-                    # We don't know what this is - Raise an error and log data!
-                    log.critical("main() - UnknownEventError: %s", data)
-                    raise
+                skip_processing = True
+
+            if not skip_processing:
+                if isinstance(data, list):
+                    self.handle_data(ts, data)
+                else:  # Not a list, hence it could be a response
+                    try:
+                        self.handle_response(ts, data)
+                    except UnknownEventError:
+                        # We don't know what this is- Raise an error & log data!
+                        log.critical("main() - UnknownEventError: %s", data)
+                        raise
+            self._check_heartbeats(ts)
 
     ##
     # Response Message Handlers
@@ -388,7 +409,7 @@ class BtfxWss:
         except ValueError as e:
             # Too many or too few values
             raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
-        self.channel_states[chan_id] = ts
+        self._heartbeats[chan_id] = ts
         if msg == 'hb':
             self._handle_hearbeat(ts, chan_id)
             return
@@ -398,14 +419,35 @@ class BtfxWss:
             raise NotRegisteredError("handle_data: %s not registered - "
                                      "Payload: %s" % (chan_id, msg))
 
-    def _handle_hearbeat(self, ts, chan_id, **kwargs):
+    def _handle_hearbeat(self, *args, **kwargs):
+        """
+        By default, does nothing.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pass
 
     def _handle_ticker(self, ts, chan_id, data):
+        """
+        Adds received ticker data to self.tickers dict, filed under its channel
+        id.
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id: int, channel id
+        :param data: tuple or list of data received via wss
+        :return:
+        """
         entry = (*data, ts,)
         self.tickers[chan_id].append(entry)
 
     def _handle_book(self, ts, chan_id, data):
+        """
+        Updates the order book stored in self.books[chan_id]
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id: int, channel id
+        :param data: dict, tuple or list of data received via wss
+        :return:
+        """
         if isinstance(data[0][0], list):
             # snapshot
             for order in data:
@@ -430,6 +472,13 @@ class BtfxWss:
                 side[str(price)] = (price, amount, count, ts)
 
     def _handle_raw_book(self, ts, chan_id, data):
+        """
+        Updates the raw order books stored in self.raw_books[chan_id]
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id: int, channel id
+        :param data: dict, tuple or list of data received via wss
+        :return:
+        """
         if isinstance(data[0][0], list):
             # snapshot
             for order in data:
@@ -453,7 +502,13 @@ class BtfxWss:
                 side[str(order_id)] = (order_id, price, amount, ts)
 
     def _handle_trades(self, ts, chan_id, data):
-
+        """
+        Files trades in self.trades[chan_id]
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id: int, channel id
+        :param data: list of data received via wss
+        :return:
+        """
         if isinstance(data[0], list):
             # snapshot
             for trade in data:
@@ -465,6 +520,13 @@ class BtfxWss:
             self.trades[chan_id][trade[0]] = trade
 
     def _handle_candles(self, ts, chan_id, data):
+        """
+        Stores OHLC data received via wss in self.candles[chan_id]
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id: int, channel id
+        :param data: list of data received via wss
+        :return:
+        """
         if isinstance(data[0][0], list):
             # snapshot
             for candle in data:
@@ -501,8 +563,7 @@ class BtfxWss:
             return
         q = {'event': 'subscribe', 'channel': channel_name}
         q.update(**kwargs)
-        print(q)
-        print("sending subscribe command!")
+        log.debug("_subscribe: %s", q)
         self.conn.send(json.dumps(q))
 
     def _unsubscribe(self, channel_name):
