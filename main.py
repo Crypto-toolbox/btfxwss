@@ -24,9 +24,10 @@ if __name__ == '__main__':
     wss = BtfxWss()
     wss.start()
     time.sleep(1)
-    wss.ticker('BTCUSD')
+    wss.raw_order_book('BTCUSD')
     wss.ping()
     t = time.time()
     while time.time() - t < 10:
         time.sleep(1)
+    print(wss.books)
     wss.stop()
