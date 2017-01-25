@@ -1,8 +1,17 @@
 # bitfinex_wss
 Client for Bitfinex Websocket API written in Python
 
-#
-Sample Code:
+Currently supports all public endpoints, authenticated channels are a
+work in progress.
+
+Offers graceful exception handling of common server errors.
+
+Data is stored in either lists, dicts or OrderBooks*.
+
+* accessed via `BtfxWss.books[chan_id].bids()` or 
+  `BtfxWss.books[chan_id].asks()`
+
+# Sample Code:
 ```
     from btfxwss import BtfxWss
     
