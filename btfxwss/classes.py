@@ -540,11 +540,23 @@ class BtfxWss:
     ##
 
     def ping(self):
+        """
+        Pings Websocket server to check if it's still alive.
+        :return:
+        """
         self.ping_timer = time.time()
         self.conn.send(json.dumps({'event': 'ping'}))
 
     def config(self, decimals_as_strings=True, ts_as_dates=False,
                sequencing=False, **kwargs):
+        """
+        Send configuration to websocket server
+        :param decimals_as_strings: bool, turn on/off decimals as strings
+        :param ts_as_dates: bool, decide to request timestamps as dates instead
+        :param sequencing: bool, turn on sequencing
+        :param kwargs:
+        :return:
+        """
         flags = 0
         if decimals_as_strings:
             flags += 8
@@ -579,18 +591,59 @@ class BtfxWss:
         self.conn.send(json.dumps(q))
 
     def ticker(self, pair, **kwargs):
+        """
+        Subscribe to the passed pair's ticker channel.
+        :param pair: str, Pair to request data for.
+        :param kwargs:
+        :return:
+        """
         self._subscribe('ticker', symbol=pair, **kwargs)
 
     def order_book(self, pair, **kwargs):
+        """
+        Subscribe to the passed pair's order book channel.
+        :param pair: str, Pair to request data for.
+        :param kwargs:
+        :return:
+        """
         self._subscribe('book', symbol=pair, **kwargs)
 
     def raw_order_book(self, pair, **kwargs):
+        """
+        Subscribe to the passed pair's raw order book channel.
+        :param pair: str, Pair to request data for.
+        :param kwargs:
+        :return:
+        """
         self._subscribe('book', pair=pair, **kwargs)
 
     def trades(self, pair, **kwargs):
+        """
+        Subscribe to the passed pair's trades channel.
+        :param pair: str, Pair to request data for.
+        :param kwargs:
+        :return:
+        """
         self._subscribe('trades', symbol=pair, **kwargs)
 
-    def ohlc(self, key, **kwargs):
+    def ohlc(self, pair, timeframe=None, **kwargs):
+        """
+        Subscribe to the passed pair's OHLC data channel.
+        :param pair: str, Pair to request data for.
+        :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
+                                1D, 7D, 14D, 1M}
+        :param kwargs:
+        :return:
+        """
+        valid_tfs = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
+                     '7D', '14D', '1M']
+        if timeframe:
+            if timeframe not in valid_tfs:
+                raise ValueError("timeframe must be any of %s" % valid_tfs)
+        else:
+            timeframe='1m'
+        pair = 't' + pair if not pair.startswith('t') else pair
+        key = 'trade:' + timeframe + ':' + pair
         self._subscribe('candles', key=key, **kwargs)
 
     ##
@@ -598,6 +651,11 @@ class BtfxWss:
     ##
 
     def sign(self, **kwargs):
+        """
+        Generates signature to authenticate with websocket API.
+        :param kwargs:
+        :return:
+        """
         nonce = str(int(time.time())* 1000)
         auth_msg = 'AUTH' + nonce
         signature = hmac.new(self.secret.encode(), auth_msg.encode(), hashlib.sha384).hexdigest()
