@@ -1,8 +1,3 @@
-"""
-Task:
-Descripion of script here.
-"""
-
 # Import Built-Ins
 import logging
 import unittest
@@ -25,6 +20,7 @@ from btfxwss.exceptions import NotRegisteredError, UnknownChannelError
 
 # Init Logging Facilities
 log = logging.getLogger(__name__)
+
 
 class BtfxWssTests(unittest.TestCase):
 
