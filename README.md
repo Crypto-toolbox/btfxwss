@@ -26,6 +26,6 @@ Sample Code:
     while time.time() - t < 10:
         time.sleep(1)
     for id in wss.tickers:
-        print(wss.tickers[id]())
+        print(wss.tickers[id])
     wss.stop()
 ```
