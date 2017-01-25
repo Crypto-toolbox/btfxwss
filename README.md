@@ -20,11 +20,12 @@ Sample Code:
     wss = BtfxWss()
     wss.start()
     time.sleep(1)
-    wss.raw_order_book('BTCUSD')
+    wss.ticker('BTCUSD')
     wss.ping()
     t = time.time()
     while time.time() - t < 10:
         time.sleep(1)
-    print(wss.books)
+    for id in wss.tickers:
+        print(wss.tickers[id]())
     wss.stop()
 ```
