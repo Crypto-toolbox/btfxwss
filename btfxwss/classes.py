@@ -410,7 +410,7 @@ class BtfxWss:
             # Too many or too few values
             raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
         self._heartbeats[chan_id] = ts
-        if msg == 'hb':
+        if data[0] == 'hb':
             self._handle_hearbeat(ts, chan_id)
             return
         try:
