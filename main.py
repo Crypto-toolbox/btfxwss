@@ -6,7 +6,7 @@ import sys
 # Import Third-Party
 
 # Import Homebrew
-from btfxwss import BtfxWss
+from btfxwss import BtfxWssRaw
 # Init Logging Facilities
 logging.basicConfig(level=logging.DEBUG, filename='test.log')
 log = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ log.addHandler(fh)
 
 
 if __name__ == '__main__':
-    wss = BtfxWss()
+    wss = BtfxWssRaw()
     wss.start()
     time.sleep(1)
     wss.raw_order_book('BTCUSD')
@@ -29,5 +29,5 @@ if __name__ == '__main__':
     t = time.time()
     while time.time() - t < 10:
         time.sleep(1)
-    print(wss.books)
+
     wss.stop()
