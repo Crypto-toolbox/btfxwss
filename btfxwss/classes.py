@@ -10,13 +10,17 @@ import time
 import hashlib
 import hmac
 import queue
+import os
+import shutil
+import datetime
+
 from collections import defaultdict
 from itertools import islice
-from socket import socket, SOCK_STREAM, AF_INET
 from threading import Thread
 
 # Import Third-Party
 from websocket import create_connection, WebSocketTimeoutException
+import websocket
 
 # Import Homebrew
 # import Server-side Exceptions
@@ -79,12 +83,12 @@ class Orderbook:
 
 class BtfxWss:
 
-    def __init__(self, key='', secret='', addr='wss://api.bitfinex.com/ws/2',
-                 output_dir='/tmp/'):
-        self.key = key
-        self.secret = secret
+    def __init__(self, key=None, secret=None, addr=None, output_dir=None):
+
+        self.key = key if key else ''
+        self.secret = secret if secret else ''
         self.conn = None
-        self.addr = addr
+        self.addr = addr if addr else 'wss://api.bitfinex.com/ws/2'
 
         # Set up variables for receiver and main loop threads
         self.running = False
@@ -92,10 +96,14 @@ class BtfxWss:
         self.q = queue.Queue()
         self.receiver_thread = None
         self.processing_thread = None
-        self.tar_dir = output_dir
+        self.controller_thread = None
+        self.cmd_q = queue.Queue()
+
+        self.tar_dir = output_dir if output_dir else '/tmp/'
         self.ping_timer = None
         self.timeout = 5
         self._heartbeats = {}
+        self._late_heartbeats = {}
 
         # Set up book-keeping variables & configurations
         self.api_version = None
@@ -108,7 +116,7 @@ class BtfxWss:
         self.tickers = defaultdict(list)
         self.books = defaultdict(Orderbook)
         self.raw_books = defaultdict(Orderbook)
-        self.trades = defaultdict(list)
+        self._trades = defaultdict(list)
         self.candles = defaultdict(list)
 
         self._event_handlers = {'error': self._raise_error,
@@ -124,7 +132,9 @@ class BtfxWss:
                                'trades': self._handle_trades}
 
         # 1XXXX == Error Code -> raise, 2XXXX == Info Code -> call
-        self._code_handlers = {'20051': self.restart,
+        restart_client = lambda: self.cmd_q.put('restart')
+
+        self._code_handlers = {'20051': restart_client,
                                '20060': self.pause,
                                '20061': self.unpause,
                                '10000': InvalidEventError,
@@ -137,17 +147,54 @@ class BtfxWss:
                                '10011': InvalidBookPrecisionError,
                                '10012': InvalidBookLengthError}
 
+    def _controller(self):
+        """
+        Thread func to allow restarting / stopping of threads, for example
+        when receiving a connection reset info message from the wss server.
+        :return:
+        """
+        while self.running:
+            try:
+                cmd = self.cmd_q.get(timeout=1)
+            except TimeoutError:
+                continue
+            except queue.Empty:
+                continue
+            if cmd == 'restart':
+                self.restart(soft=True)
+            elif cmd == 'stop':
+                self.stop()
+
     def _check_heartbeats(self, ts, *args, **kwargs):
         """
+        Checks if the heartbeats are on-time. If not, the channel id is escalated
+        to self._late_heartbeats and a warning is issued; once a hb is received
+        again from this channel, it'll be removed from this dict, and an Info
+        message logged.
         :param ts: timestamp, declares when data was received by the client
-        :param chan_id:
         :return:
         """
         for chan_id in self._heartbeats:
-            if ts - self._heartbeats[chan_id] > 2:
-                log.warning("BtfxWss.heartbeats: Channel %s hasn't send a "
-                            "heartbeat in %s seconds!",
-                            chan_id, ts - self._heartbeats[chan_id])
+            if ts - self._heartbeats[chan_id] >= 10:
+                if chan_id not in self._late_heartbeats:
+                    # This is newly late; escalate
+                    log.warning("BtfxWss.heartbeats: Channel %s hasn't sent a "
+                                "heartbeat in %s seconds!",
+                                self.channel_labels[chan_id],
+                                ts - self._heartbeats[chan_id])
+                    self._late_heartbeats[chan_id] = ts
+                else:
+                    # We know of this already
+                    continue
+            else:
+                # its not late
+                try:
+                    self._late_heartbeats.pop(chan_id)
+                except KeyError:
+                    # wasn't late before, check next channel
+                    continue
+                log.info("BtfxWss.heartbeats: Channel %s has sent a "
+                         "heartbeat again!", self.channel_labels[chan_id])
 
     def _check_ping(self):
         """
@@ -179,12 +226,17 @@ class BtfxWss:
         :return:
         """
         self.running = True
+
+        # Start controller thread
+        self.controller_thread = Thread(target=self._controller, name='Controller Thread')
+        self.controller_thread.start()
+
         log.info("BtfxWss.start(): Initializing Websocket connection..")
         self.conn = create_connection(self.addr, timeout=1)
 
         log.info("BtfxWss.start(): Initializing receiver thread..")
         if not self.receiver_thread:
-            self.receiver_thread = Thread(target=self.receive)
+            self.receiver_thread = Thread(target=self.receive, name='Receiver Thread')
             self.receiver_thread.start()
         else:
             log.info("BtfxWss.start(): Thread not started! "
@@ -192,7 +244,7 @@ class BtfxWss:
 
         log.info("BtfxWss.start(): Initializing processing thread..")
         if not self.processing_thread:
-            self.processing_thread = Thread(target=self.process)
+            self.processing_thread = Thread(target=self.process, name='Processing Thread')
             self.processing_thread.start()
         else:
             log.info("BtfxWss.start(): Thread not started! "
@@ -205,23 +257,61 @@ class BtfxWss:
         """
         log.info("BtfxWss.stop(): Stopping client..")
         self.running = False
+
         log.info("BtfxWss.stop(): Joining receiver thread..")
-        self.receiver_thread.join()
+        try:
+            self.receiver_thread.join()
+            if self.receiver_thread.is_alive():
+                time.time(1)
+        except AttributeError:
+            log.debug("BtfxWss.stop(): Receiver thread was not running!")
+
         log.info("BtfxWss.stop(): Joining processing thread..")
-        self.processing_thread.join()
+        try:
+            self.processing_thread.join()
+            if self.processing_thread.is_alive():
+                time.time(1)
+        except AttributeError:
+            log.debug("BtfxWss.stop(): Processing thread was not running!")
+
         log.info("BtfxWss.stop(): Closing websocket conection..")
-        self.conn.close()
+        try:
+            self.conn.close()
+        except websocket.WebSocketConnectionClosedException:
+            pass
+        except AttributeError:
+            # Connection is None
+            pass
+
         self.conn = None
+        self.processing_thread = None
+        self.receiver_thread = None
+
         log.info("BtfxWss.stop(): Done!")
 
-    def restart(self):
+    def restart(self, soft=False):
         """
-        Restarts client.
+        Restarts client. If soft is True, the client attempts to re-subscribe
+        to all channels which it was previously subscribed to.
         :return:
         """
         log.info("BtfxWss.restart(): Restarting client..")
         self.stop()
         self.start()
+        if soft:
+            # copy data
+            channel_labels = self.channel_labels
+
+        else:
+            # clear previous channel caches
+            self.channels = {}
+            self.channel_labels = {}
+            self.channel_states = {}
+
+        if soft:
+            # re-subscribe to channels
+            for channel_name, kwargs in channel_labels:
+                self._subscribe(channel_name, **kwargs)
 
     def receive(self):
         """
@@ -237,6 +327,11 @@ class BtfxWss:
                 raw = self.conn.recv()
             except WebSocketTimeoutException:
                 continue
+            except websocket.WebSocketConnectionClosedException:
+                # this needs to restart the client, while keeping track
+                # track of the currently subscribed channels!
+                self.conn = None
+                self.cmd_q.put('restart')
             msg = time.time(), json.loads(raw)
             self.q.put(msg)
 
@@ -255,6 +350,9 @@ class BtfxWss:
                 except TimeoutError:
                     log.exception("BtfxWss.ping(): TimedOut! (%ss)" %
                                   self.ping_timer)
+            if not self.conn:
+                # The connection was killed - initiate restart
+                self.restart(soft=True)
 
             skip_processing = False
 
@@ -269,10 +367,14 @@ class BtfxWss:
                 else:  # Not a list, hence it could be a response
                     try:
                         self.handle_response(ts, data)
-                    except (UnknownEventError, Exception):
-                        # We don't know what this is- Raise an error & log data!
-                        log.exception("main() - UnknownEventError: %s", data)
-                        self.stop()
+                    except (UnknownEventError, Exception) as e:
+                        if e is UnknownEventError:
+                            # We don't know what event this is- Raise an error & log data!
+                            log.exception("main() - UnknownEventError: %s",
+                                          data)
+                        else:
+                            log.exception("main() - Unknown Exception: %s", data)
+                        self.cmd_q.put('stop')
                         raise
             self._check_heartbeats(ts)
 
@@ -318,6 +420,9 @@ class BtfxWss:
         log.debug("_handle_subscribed: %s - %s - %s", chanId, channel, kwargs)
         if chanId in self.channels:
             raise AlreadyRegisteredError()
+
+        self._heartbeats[chanId] = time.time()
+
         try:
             channel_key = ('raw_'+channel
                            if kwargs['prec'].startswith('R') and channel == 'book'
@@ -330,13 +435,23 @@ class BtfxWss:
         except KeyError:
             raise UnknownChannelError()
 
-        if 'key' in kwargs:
-            self.channel_labels[chanId] = (channel_key, kwargs['key'])
-        else:
-            try:
-                self.channel_labels[chanId] = (channel_key, kwargs['pair'])
-            except KeyError:
-                self.channel_labels[chanId] = (channel_key, kwargs['symbol'])
+        # prep kwargs to be used as secondary value in dict key
+        try:
+            kwargs.pop('event')
+        except KeyError:
+            pass
+
+        try:
+            kwargs.pop('len')
+        except KeyError:
+            pass
+
+        try:
+            kwargs.pop('chanId')
+        except KeyError:
+            pass
+
+        self.channel_labels[chanId] = (channel_key, kwargs)
 
     def _handle_unsubscribed(self, *args, chanId=None, **kwargs):
         """
@@ -344,11 +459,21 @@ class BtfxWss:
         the client.
         :param chanId: int, represent channel id as assigned by server
         """
-        log.debug("_handle_subscribed: %s - %s", chanId, kwargs)
+        log.debug("_handle_unsubscribed: %s - %s", chanId, kwargs)
         try:
             self.channels.pop(chanId)
         except KeyError:
             raise NotRegisteredError()
+
+        try:
+            self._heartbeats.pop(chanId)
+        except KeyError:
+            pass
+
+        try:
+            self._late_heartbeats.pop(chanId)
+        except KeyError:
+            pass
 
     def _raise_error(self, *args, **kwargs):
         """
@@ -518,7 +643,7 @@ class BtfxWss:
 
     def _handle_trades(self, ts, chan_id, data):
         """
-        Files trades in self.trades[chan_id]
+        Files trades in self._trades[chan_id]
         :param ts: timestamp, declares when data was received by the client
         :param chan_id: int, channel id
         :param data: list of data received via wss
@@ -528,11 +653,11 @@ class BtfxWss:
             # snapshot
             for trade in data:
                 order_id, mts, amount, price = trade
-                self.trades[chan_id][order_id] = (order_id, mts, amount, price)
+                self._trades[chan_id][order_id] = (order_id, mts, amount, price)
         else:
             # single data
             _type, trade = data
-            self.trades[chan_id][trade[0]] = trade
+            self._trades[chan_id][trade[0]] = trade
 
     def _handle_candles(self, ts, chan_id, data):
         """
@@ -685,104 +810,101 @@ class BtfxWss:
 
 
 class BtfxWssRaw(BtfxWss):
-    def __init__(self, key='', secret='', addr='wss://api.bitfinex.com/ws/2',
-                 output_dir='/tmp/'):
+    def __init__(self, key=None, secret=None, addr=None,
+                 output_dir=None):
+
         super(BtfxWssRaw, self).__init__(key=key, secret=secret, addr=addr,
                                          output_dir=output_dir)
 
         self.tickers = None
         self.books = None
         self.raw_books = None
-        self.trades = None
+        self._trades = None
         self.candles = None
+        self.rotator_thread = None
 
-    def start(self, path=None):
+    def _init_file_descriptors(self, path=None):
+        path = path if path else self.tar_dir
+        self.tickers = open(path + 'btfx_tickers.csv', 'a', encoding='UTF-8')
+        self.books = open(path + 'btfx_books.csv', 'a', encoding='UTF-8')
+        self.raw_books = open(path + 'btfx_raw_books.csv', 'a', encoding='UTF-8')
+        self._trades = open(path + 'btfx_trades.csv', 'a', encoding='UTF-8')
+        self.candles = open(path + 'btfx_candles.csv', 'a', encoding='UTF-8')
+
+    def _close_file_descriptors(self):
+        self.tickers.close()
+        self.books.close()
+        self.raw_books.close()
+        self._trades.close()
+        self.candles.close()
+
+    def _rotate(self):
+        t = time.time()
+        while self.running:
+            if time.time() - t >= 3600*24:
+                self._rotate_descriptors('/var/tmp/data/')
+                t = time.time()
+            else:
+                time.sleep(1)
+
+    def _rotate_descriptors(self, target_dir):
+        # close file descriptors
+        self._close_file_descriptors()
+
+        # Move old files to a new location
+        fnames = ['btfx_tickers.csv', 'btfx_books.csv', 'btfx_raw_books.csv',
+                  'btfx_candles.csv', 'btfx_trades.csv']
+        date = time.strftime('%Y-%m-%d_%H:%M:%S')
+        for fname in fnames:
+            new_name = fname.split('_')[0] + '_' + date + '_' + \
+                       fname.split('_')[1]
+            src = self.tar_dir+'/'+fname
+            tar = target_dir + '/' + fname.split()
+            shutil.copy(src, tar)
+            os.remove(src)
+
+        # re-open file descriptors
+        self._init_file_descriptors()
+
+    def start(self):
         """
         Start the websocket client threads
         :return:
         """
-        path = path if path else '/tmp/'
-        self.running = True
+        self._init_file_descriptors()
 
-        # Open File descriptors:
-        log.info("BtfxWss.start(): Opening File descriptors..")
-        self.tickers = open(path + 'btfx_tickers.csv', 'a', encoding='UTF-8')
-        self.books = open(path + 'btfx_books.csv', 'a', encoding='UTF-8')
-        self.raw_books = open(path + 'btfx_raw_books.csv', 'a', encoding='UTF-8')
-        self.trades = open(path + 'btfx_trades.csv', 'a', encoding='UTF-8')
-        self.candles = open(path + 'btfx_candles.csv', 'a', encoding='UTF-8')
+        super(BtfxWssRaw, self).start()
 
-        log.info("BtfxWss.start(): Initializing Websocket connection..")
-        self.conn = create_connection(self.addr, timeout=1)
-
-        log.info("BtfxWss.start(): Initializing receiver thread..")
-        if not self.receiver_thread:
-            self.receiver_thread = Thread(target=self.receive)
-            self.receiver_thread.start()
+        log.info("BtfxWss.start(): Initializing rotator thread..")
+        if not self.rotator_thread:
+            self.rotator_thread = Thread(target=self._rotate, name='Rotator Thread')
+            self.rotator_thread.start()
         else:
             log.info("BtfxWss.start(): Thread not started! "
-                     "self.receiver_thread is populated!")
-
-        log.info("BtfxWss.start(): Initializing processing thread..")
-        if not self.processing_thread:
-            self.processing_thread = Thread(target=self.process)
-            self.processing_thread.start()
-        else:
-            log.info("BtfxWss.start(): Thread not started! "
-                     "self.processing_thread is populated!")
+                     "self.rotator_thread is populated!")
 
     def stop(self):
         """
         Stop all threads and modules of the client.
         :return:
         """
-        log.info("BtfxWss.stop(): Stopping client..")
-        self.running = False
-        log.info("BtfxWss.stop(): Joining receiver thread..")
-        self.receiver_thread.join()
-        if self.receiver_thread.is_alive():
-            time.time(1)
-        log.info("BtfxWss.stop(): Joining processing thread..")
-        self.processing_thread.join()
-        if self.processing_thread.is_alive():
-            time.time(1)
-        log.info("BtfxWss.stop(): Closing websocket conection..")
-        self.conn.close()
-        self.conn = None
-        log.info("BtfxWss.stop(): Closing File Descriptors")
-        self.tickers.close()
-        self.books.close()
-        self.raw_books.close()
-        self.trades.close()
-        self.candles.close()
-        log.info("BtfxWss.stop(): Done!")
+        super(BtfxWssRaw, self).stop()
+
+        log.info("BtfxWssRaw.stop(): Joining rotator thread..")
+        try:
+            self.rotator_thread.join()
+            if self.rotator_thread.is_alive():
+                time.time(1)
+        except AttributeError:
+            log.debug("BtfxWss.stop(): Rotator thread was not running!")
+
+        self.rotator_thread = None
+
+        log.info("BtfxWssRaw.stop(): Done!")
 
     ##
     # Data Message Handlers
     ##
-
-    def handle_data(self, ts, msg):
-        """
-        Passes msg to responding data handler, determined by its channel id,
-        which is expected at index 0.
-        :param ts: timestamp, declares when data was received by the client
-        :param msg: list or dict of websocket data
-        :return:
-        """
-        try:
-            chan_id, *data = msg
-        except ValueError as e:
-            # Too many or too few values
-            raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
-        self._heartbeats[chan_id] = ts
-        if data[0] == 'hb':
-            self._handle_hearbeat(ts, chan_id)
-            return
-        try:
-            self.channels[chan_id](ts, chan_id, data)
-        except KeyError:
-            raise NotRegisteredError("handle_data: %s not registered - "
-                                     "Payload: %s" % (chan_id, msg))
 
     @staticmethod
     def _handle_hearbeat(*args, **kwargs):
@@ -831,14 +953,14 @@ class BtfxWssRaw(BtfxWss):
 
     def _handle_trades(self, ts, chan_id, data):
         """
-        Files trades in self.trades[chan_id]
+        Files trades in self._trades[chan_id]
         :param ts: timestamp, declares when data was received by the client
         :param chan_id: int, channel id
         :param data: list of data received via wss
         :return:
         """
         js = json.dumps((ts, self.channel_labels[chan_id], data))
-        self.trades.write(js + '\n')
+        self._trades.write(js + '\n')
 
     def _handle_candles(self, ts, chan_id, data):
         """
