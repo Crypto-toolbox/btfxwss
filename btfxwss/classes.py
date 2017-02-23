@@ -232,7 +232,12 @@ class BtfxWss:
         self.controller_thread.start()
 
         log.info("BtfxWss.start(): Initializing Websocket connection..")
-        self.conn = create_connection(self.addr, timeout=1)
+        while self.conn is None:
+            try:
+                self.conn = create_connection(self.addr, timeout=3)
+            except WebSocketTimeoutException:
+                self.conn = None
+                print("Couldn't create websocket connection - retrying!")
 
         log.info("BtfxWss.start(): Initializing receiver thread..")
         if not self.receiver_thread:
@@ -332,6 +337,9 @@ class BtfxWss:
                 # track of the currently subscribed channels!
                 self.conn = None
                 self.cmd_q.put('restart')
+            except AttributeError:
+                # self.conn is None, idle loop until shutdown of thread
+                continue
             msg = time.time(), json.loads(raw)
             self.q.put(msg)
 
