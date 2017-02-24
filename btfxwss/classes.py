@@ -864,10 +864,10 @@ class BtfxWssRaw(BtfxWss):
                   'btfx_candles.csv', 'btfx_trades.csv']
         date = time.strftime('%Y-%m-%d_%H:%M:%S')
         for fname in fnames:
-            new_name = fname.split('_')[0] + '_' + date + '_' + \
-                       fname.split('_')[1]
+            ex_name, dtype = fname.split('_')
+            new_name = ex_name + '_' + date + '_' + dtype
             src = self.tar_dir+'/'+fname
-            tar = target_dir + '/' + fname.split()
+            tar = target_dir + '/' + new_name
             shutil.copy(src, tar)
             os.remove(src)
 
