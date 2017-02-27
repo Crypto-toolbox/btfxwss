@@ -12,7 +12,7 @@ import hmac
 import queue
 import os
 import shutil
-import datetime
+import urllib
 
 from collections import defaultdict
 from itertools import islice
@@ -800,22 +800,26 @@ class BtfxWss:
     # Private Endpoints
     ##
 
-    def sign(self, filter=None, **kwargs):
+    def sign(self, payload):
         """
         Generates signature to authenticate with websocket API.
         :param filter: list of str, declares messages you'd like to receive.
         :param kwargs:
         :return:
         """
-        nonce = str(int(time.time())* 1000)
-        auth_msg = 'AUTH' + nonce
-        signature = hmac.new(self.secret.encode(), auth_msg.encode(), hashlib.sha384).hexdigest()
-        payload = {'apiKey': self.key, 'event': 'auth', 'authPayload': auth_msg,
-                   'authNonce': nonce, 'authSig': signature}
-        if filter:
-            payload['filter'] = filter
-        payload.update(**kwargs)
-        self.conn.send(json.dumps(payload))
+
+        auth_msg = urllib.parse.urlencode(payload)
+        signature = hmac.new(self.secret.encode(), auth_msg.encode(),
+                             hashlib.sha384).hexdigest()
+        return signature
+
+    def _construct_auth_request(self, payload, **kwargs):
+        nonce = '1488194803683000' #str(int(time.time()) * 1000)
+        signature = self.sign(payload)
+        request = {'apiKey': self.key, 'event': 'auth', 'authNonce': nonce,
+                   'authPayload': 'AUTH' + nonce, 'authSig': signature}
+        request.update(kwargs)
+        self.conn.send(json.dumps(request))
 
 
 class BtfxWssRaw(BtfxWss):
