@@ -368,6 +368,7 @@ class BtfxWss:
                 ts, data = self.q.get(timeout=0.1)
             except queue.Empty:
                 skip_processing = True
+                ts = time.time()
 
             if not skip_processing:
                 if isinstance(data, list):
@@ -860,7 +861,7 @@ class BtfxWssRaw(BtfxWss):
         self._close_file_descriptors()
 
         # Move old files to a new location
-        fnames = ['btfx_tickers.csv', 'btfx_books.csv', 'btfx_raw_books.csv',
+        fnames = ['btfx_tickers.csv', 'btfx_books.csv', 'btfx_rawbooks.csv',
                   'btfx_candles.csv', 'btfx_trades.csv']
         date = time.strftime('%Y-%m-%d_%H:%M:%S')
         for fname in fnames:
