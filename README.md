@@ -1,12 +1,13 @@
 # bitfinex_wss
 Client for Bitfinex Websocket API written in Python
 
-Currently supports all public endpoints, authenticated channels are a
+Currently supports all public endpoints; authenticated channels are a
 work in progress.
 
 Offers graceful exception handling of common server errors.
 
-Data is stored in either lists, dicts or OrderBooks*.
+Data is stored within the object's attributes for `BtfxWss`;
+`BtfxWssRaw` dumps data to a given folder on the disk. 
 
 * accessed via `BtfxWss.books[chan_id].bids()` or 
   `BtfxWss.books[chan_id].asks()`
@@ -37,4 +38,13 @@ Data is stored in either lists, dicts or OrderBooks*.
     for id in wss.tickers:
         print(wss.tickers[id])
     wss.stop()
+```
+Accessing data stored in `BtfxWss`:
+```
+wss = BtfxWss()
+wss.ticker('BTCUSD')
+print(wss.tickers['BTCUSD])
+print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
+print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
+
 ```
