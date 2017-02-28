@@ -9,10 +9,11 @@ Offers graceful exception handling of common server errors.
 Data is stored within the object's attributes for `BtfxWss`;
 `BtfxWssRaw` dumps data to a given folder on the disk. 
 
-* accessed via `BtfxWss.books[chan_id].bids()` or 
-  `BtfxWss.books[chan_id].asks()`
 
 # Sample Code:
+
+Starting a session and subscribing to channels.
+
 ```
     from btfxwss import BtfxWss
     
@@ -31,6 +32,7 @@ Data is stored within the object's attributes for `BtfxWss`;
     wss.start()
     time.sleep(1)
     wss.ticker('BTCUSD')
+    wss.order_book('BTCUSD')
     wss.ping()
     t = time.time()
     while time.time() - t < 10:
@@ -41,10 +43,7 @@ Data is stored within the object's attributes for `BtfxWss`;
 ```
 Accessing data stored in `BtfxWss`:
 ```
-wss = BtfxWss()
-wss.ticker('BTCUSD')
-print(wss.tickers['BTCUSD])
-print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
-print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
-
+    print(wss.tickers['BTCUSD])
+    print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
+    print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
 ```
