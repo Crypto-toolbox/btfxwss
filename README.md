@@ -30,20 +30,35 @@ Starting a session and subscribing to channels.
     
     wss = BtfxWss()
     wss.start()
-    time.sleep(1)
+    time.sleep(1)  # give the client some prep time to set itself up.
+    
+    # Subscribe to some channels
     wss.ticker('BTCUSD')
     wss.order_book('BTCUSD')
+    
+    # Send a ping - if this returns silently, everything's fine.
     wss.ping()
+    
+    # Do something else
     t = time.time()
     while time.time() - t < 10:
-        time.sleep(1)
-    for id in wss.tickers:
-        print(wss.tickers[id])
-    wss.stop()
+        pass
+    
 ```
 Accessing data stored in `BtfxWss`:
 ```
     print(wss.tickers['BTCUSD])
     print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
     print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
+```
+Unsubscribing from channels:
+```
+    wss.ticker('BTCUSD')
+    wss.ticker('BTCEUR')
+```
+
+Shutting down the client:
+
+```
+    wss.stop()
 ```
