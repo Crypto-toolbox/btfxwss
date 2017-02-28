@@ -840,7 +840,7 @@ class BtfxWssRaw(BtfxWss):
         path = path if path else self.tar_dir
         self.tickers = open(path + 'btfx_tickers.csv', 'a', encoding='UTF-8')
         self.books = open(path + 'btfx_books.csv', 'a', encoding='UTF-8')
-        self.raw_books = open(path + 'btfx_raw_books.csv', 'a', encoding='UTF-8')
+        self.raw_books = open(path + 'btfx_rawbooks.csv', 'a', encoding='UTF-8')
         self._trades = open(path + 'btfx_trades.csv', 'a', encoding='UTF-8')
         self.candles = open(path + 'btfx_candles.csv', 'a', encoding='UTF-8')
 
