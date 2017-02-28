@@ -405,15 +405,19 @@ class BtfxWss:
         # Handle Non-Critical Errors
         except (InvalidChannelError, InvalidPairError, InvalidBookLengthError,
                 InvalidBookPrecisionError) as e:
+            log.exception(e)
             print(e)
         except (NotSubscribedError, AlreadySubscribedError) as e:
+            log.exception(e)
             print(e)
         except GenericSubscriptionError as e:
+            log.exception(e)
             print(e)
 
         # Handle Critical Errors
         except InvalidEventError as e:
             log.critical("handle_response(): %s; %s", e, resp)
+            log.exception(e)
             raise SystemError(e)
         except KeyError:
             # unsupported event!
