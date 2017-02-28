@@ -594,8 +594,9 @@ class BtfxWss:
         :param data: tuple or list of data received via wss
         :return:
         """
+        label = self.channel_labels[chan_id][1]['pair']
         entry = (*data, ts,)
-        self.tickers[chan_id].append(entry)
+        self.tickers[label].append(entry)
 
     def _handle_book(self, ts, chan_id, data):
         """
@@ -605,18 +606,19 @@ class BtfxWss:
         :param data: dict, tuple or list of data received via wss
         :return:
         """
+        label = self.channel_labels[chan_id][1]['pair']
         if isinstance(data[0][0], list):
             # snapshot
             for order in data:
                 price, count, amount = order
-                side = (self.books[chan_id].bids if amount > 0
-                        else self.books[chan_id].asks)
+                side = (self.books[label].bids if amount > 0
+                        else self.books[label].asks)
                 side[str(price)] = (price, amount, count, ts)
         else:
             # update
             price, count, amount = data
-            side = (self.books[chan_id].bids if amount > 0
-                    else self.books[chan_id].asks)
+            side = (self.books[label].bids if amount > 0
+                    else self.books[label].asks)
             if count == 0:
                 # remove from book
                 try:
@@ -667,15 +669,16 @@ class BtfxWss:
         :param data: list of data received via wss
         :return:
         """
+        label = self.channel_labels[chan_id][1]['pair']
         if isinstance(data[0], list):
             # snapshot
             for trade in data:
                 order_id, mts, amount, price = trade
-                self._trades[chan_id][order_id] = (order_id, mts, amount, price)
+                self._trades[label][order_id] = (order_id, mts, amount, price)
         else:
             # single data
             _type, trade = data
-            self._trades[chan_id][trade[0]] = trade
+            self._trades[label][trade[0]] = trade
 
     def _handle_candles(self, ts, chan_id, data):
         """
@@ -685,13 +688,14 @@ class BtfxWss:
         :param data: list of data received via wss
         :return:
         """
+        label = self.channel_labels[chan_id][1]['pair']
         if isinstance(data[0][0], list):
             # snapshot
             for candle in data:
-                self.candles[chan_id].append(candle)
+                self.candles[label].append(candle)
         else:
             # update
-            self.candles[chan_id].append(data)
+            self.candles[label].append(data)
 
     ##
     # Commands
