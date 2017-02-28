@@ -752,25 +752,31 @@ class BtfxWss:
         q = {'event': 'unsubscribe', 'chanId': chan_id}
         self.conn.send(json.dumps(q))
 
-    def ticker(self, pair, **kwargs):
+    def ticker(self, pair, unsubsribe=False, **kwargs):
         """
         Subscribe to the passed pair's ticker channel.
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
         """
-        self._subscribe('ticker', symbol=pair, **kwargs)
+        if unsubsribe:
+            self._unsubscribe('ticker', symbol=pair, **kwargs)
+        else:
+            self._subscribe('ticker', symbol=pair, **kwargs)
 
-    def order_book(self, pair, **kwargs):
+    def order_book(self, pair, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's order book channel.
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
         """
-        self._subscribe('book', symbol=pair, **kwargs)
+        if unsubscribe:
+            self._unsubscribe('book', symbol=pair, **kwargs)
+        else:
+            self._subscribe('book', symbol=pair, **kwargs)
 
-    def raw_order_book(self, pair, prec=None, **kwargs):
+    def raw_order_book(self, pair, prec=None, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's raw order book channel.
         :param pair: str, Pair to request data for.
@@ -778,18 +784,24 @@ class BtfxWss:
         :return:
         """
         prec = 'R0' if prec is None else prec
-        self._subscribe('book', pair=pair, prec=prec, **kwargs)
+        if unsubscribe:
+            self._unsubscribe('book', pair=pair, prec=prec, **kwargs)
+        else:
+            self._subscribe('book', pair=pair, prec=prec, **kwargs)
 
-    def trades(self, pair, **kwargs):
+    def trades(self, pair, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's trades channel.
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
         """
-        self._subscribe('trades', symbol=pair, **kwargs)
+        if unsubscribe:
+            self._unsubscribe('trades', symbol=pair, **kwargs)
+        else:
+            self._subscribe('trades', symbol=pair, **kwargs)
 
-    def ohlc(self, pair, timeframe=None, **kwargs):
+    def ohlc(self, pair, timeframe=None, unsubcribe=False, **kwargs):
         """
         Subscribe to the passed pair's OHLC data channel.
         :param pair: str, Pair to request data for.
@@ -804,10 +816,13 @@ class BtfxWss:
             if timeframe not in valid_tfs:
                 raise ValueError("timeframe must be any of %s" % valid_tfs)
         else:
-            timeframe='1m'
+            timeframe = '1m'
         pair = 't' + pair if not pair.startswith('t') else pair
         key = 'trade:' + timeframe + ':' + pair
-        self._subscribe('candles', key=key, **kwargs)
+        if unsubcribe:
+            self._unsubscribe('candles', key=key, **kwargs)
+        else:
+            self._subscribe('candles', key=key, **kwargs)
 
     ##
     # Private Endpoints
