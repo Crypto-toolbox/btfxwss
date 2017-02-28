@@ -521,6 +521,8 @@ class BtfxWss:
         log.info(output_msg)
 
         try:
+            raise self._code_handlers[info_code]()
+        except TypeError:
             self._code_handlers[info_code]()
         except KeyError:
             raise UnknownWSSInfo(output_msg)
