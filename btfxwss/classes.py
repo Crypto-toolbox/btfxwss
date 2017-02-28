@@ -20,7 +20,7 @@ from threading import Thread
 
 # Import Third-Party
 from websocket import create_connection, WebSocketTimeoutException
-import websocket
+from websocket import WebSocketConnectionClosedException
 
 # Import Homebrew
 # import Server-side Exceptions
@@ -283,7 +283,7 @@ class BtfxWss:
         log.info("BtfxWss.stop(): Closing websocket conection..")
         try:
             self.conn.close()
-        except websocket.WebSocketConnectionClosedException:
+        except WebSocketConnectionClosedException:
             pass
         except AttributeError:
             # Connection is None
@@ -333,7 +333,7 @@ class BtfxWss:
                 raw = self.conn.recv()
             except WebSocketTimeoutException:
                 continue
-            except websocket.WebSocketConnectionClosedException:
+            except WebSocketConnectionClosedException:
                 # this needs to restart the client, while keeping track
                 # track of the currently subscribed channels!
                 self.conn = None
