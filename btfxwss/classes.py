@@ -1,8 +1,3 @@
-"""
-Task:
-Descripion of script here.
-"""
-
 # Import Built-Ins
 import logging
 import json
@@ -82,9 +77,19 @@ class Orderbook:
 
 
 class BtfxWss:
+    """
+    Client Class to connect to Bitfinex Websocket API. Data is stored in attributes.
+    Features error handling and logging, as well as reconnection automation if
+    the Server issues a connection reset.
+    """
 
-    def __init__(self, key=None, secret=None, addr=None, output_dir=None):
-
+    def __init__(self, key=None, secret=None, addr=None):
+        """
+        Initializes BtfxWss Instance.
+        :param key: Api Key as string
+        :param secret: Api secret as string
+        :param addr: Websocket API Address
+        """
         self.key = key if key else ''
         self.secret = secret if secret else ''
         self.conn = None
@@ -99,7 +104,6 @@ class BtfxWss:
         self.controller_thread = None
         self.cmd_q = queue.Queue()
 
-        self.tar_dir = output_dir if output_dir else '/tmp/'
         self.ping_timer = None
         self.timeout = 5
         self._heartbeats = {}
@@ -828,20 +832,42 @@ class BtfxWss:
 
 
 class BtfxWssRaw(BtfxWss):
+    """
+    Bitfinex Websocket API Client. Inherits from BtfxWss, but stores data in raw
+    format on disk instead of in-memory. Rotates files every 24 hours by default.
+    """
+
     def __init__(self, key=None, secret=None, addr=None,
-                 output_dir=None):
+                 output_dir=None, rotate_after=None):
+        """
+        Initializes BtfxWssRaw Instance.
+        :param key: Api Key as string
+        :param secret: Api secret as string
+        :param addr: Websocket API Address
+        :param output_dir: Directory to create file descriptors in
+        :param rotate_after: time in seconds, after which descriptor ought to be
+                             rotated. Default 3600*24s
+        """
+        super(BtfxWssRaw, self).__init__(key=key, secret=secret, addr=addr)
 
-        super(BtfxWssRaw, self).__init__(key=key, secret=secret, addr=addr,
-                                         output_dir=output_dir)
+        self.tar_dir = output_dir if output_dir else '/tmp/'
+        self.rotate_after = rotate_after if rotate_after else 3600 * 24
 
+        # File Desciptor Variables
         self.tickers = None
         self.books = None
         self.raw_books = None
         self._trades = None
         self.candles = None
+
         self.rotator_thread = None
 
     def _init_file_descriptors(self, path=None):
+        """
+        Assign the file descriptors to their respective attributes.
+        :param path: str, defaults to self.tar_dir
+        :return:
+        """
         path = path if path else self.tar_dir
         self.tickers = open(path + 'btfx_tickers.csv', 'a', encoding='UTF-8')
         self.books = open(path + 'btfx_books.csv', 'a', encoding='UTF-8')
@@ -850,6 +876,10 @@ class BtfxWssRaw(BtfxWss):
         self.candles = open(path + 'btfx_candles.csv', 'a', encoding='UTF-8')
 
     def _close_file_descriptors(self):
+        """
+        Closes all file descriptors
+        :return:
+        """
         self.tickers.close()
         self.books.close()
         self.raw_books.close()
@@ -857,15 +887,26 @@ class BtfxWssRaw(BtfxWss):
         self.candles.close()
 
     def _rotate(self):
+        """
+        Function for the rotator thread, which calls the rotate_descriptors()
+        method after the set interval stated in self.rotate_after
+        :return:
+        """
         t = time.time()
         while self.running:
-            if time.time() - t >= 3600*24:
+            if time.time() - t >= self.rotate_after:
                 self._rotate_descriptors('/var/tmp/data/')
                 t = time.time()
             else:
                 time.sleep(1)
 
     def _rotate_descriptors(self, target_dir):
+        """
+        Closes file descriptors, renames the files and moves them to target_dir.
+        Afterwards, opens new batch of file descriptors.
+        :param target_dir: str, path.
+        :return:
+        """
         # close file descriptors
         self._close_file_descriptors()
 
@@ -923,16 +964,6 @@ class BtfxWssRaw(BtfxWss):
     ##
     # Data Message Handlers
     ##
-
-    @staticmethod
-    def _handle_hearbeat(*args, **kwargs):
-        """
-        By default, does nothing.
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        pass
 
     def _handle_ticker(self, ts, chan_id, data):
         """
