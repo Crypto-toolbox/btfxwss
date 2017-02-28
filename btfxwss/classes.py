@@ -132,7 +132,8 @@ class BtfxWss:
                                'trades': self._handle_trades}
 
         # 1XXXX == Error Code -> raise, 2XXXX == Info Code -> call
-        restart_client = lambda: self.cmd_q.put('restart')
+        def restart_client():
+            self.cmd_q.put('restart')
 
         self._code_handlers = {'20051': restart_client,
                                '20060': self.pause,
