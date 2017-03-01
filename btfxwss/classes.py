@@ -9,6 +9,7 @@ import os
 import shutil
 import urllib
 import threading
+import datetime
 
 from collections import defaultdict
 from itertools import islice
@@ -863,22 +864,34 @@ class BtfxWssRaw(BtfxWss):
     format on disk instead of in-memory. Rotates files every 24 hours by default.
     """
 
-    def __init__(self, key=None, secret=None, addr=None,
-                 output_dir=None, rotate_after=None, rotate_to=None):
+    def __init__(self, key=None, secret=None, addr=None, output_dir=None,
+                 rotate_after=None, rotate_at=None, rotate_to=None):
         """
         Initializes BtfxWssRaw Instance.
-        :param key: Api Key as string
-        :param secret: Api secret as string
-        :param addr: Websocket API Address
-        :param output_dir: Directory to create file descriptors in
+        :param key: Api Key as string.
+        :param secret: Api secret as string.
+        :param addr: Websocket API Address.
+        :param output_dir: Directory to create file descriptors in.
         :param rotate_after: time in seconds, after which descriptor ought to be
-                             rotated. Default 3600*24s
-        :param rotate_to: path as str, target folder to copy data to
+                             rotated. Default 3600*24s.
+        :param rotate_at: optional time, date str in format 'HH:MM' (24h clock),
+                          at which descriptors should be rotated. Mutually
+                          exclusive with rotate_after.
+        :param rotate_to: path as str, target folder to copy data to.
         """
         super(BtfxWssRaw, self).__init__(key=key, secret=secret, addr=addr)
 
         self.tar_dir = output_dir if output_dir else '/tmp/'
-        self.rotate_after = rotate_after if rotate_after else 3600 * 24
+
+        if not rotate_after and not rotate_at:
+            self.rotate_after = rotate_after if rotate_after else 3600 * 24
+            self.rotate_at = None
+        elif rotate_after and rotate_at:
+            raise ValueError("Can only specify either rotate_at or rotate_after! Not both!")
+        else:
+            self.rotate_after = rotate_after
+            self.rotate_at = rotate_at
+
         self.rotate_to = rotate_to if rotate_to else '/var/tmp/data/'
 
         # File Desciptor Variables
@@ -922,11 +935,16 @@ class BtfxWssRaw(BtfxWss):
         """
         t = time.time()
         while self.running:
-            if time.time() - t >= self.rotate_after:
-                self._rotate_descriptors(self.rotate_to)
-                t = time.time()
-            else:
-                time.sleep(1)
+            time_to_rotate = ((time.time() - t >= self.rotate_after)
+                              if self.rotate_after
+                              else (datetime.datetime.now().strftime('%H:%M') ==
+                                    self.rotate_at))
+            if self.rotate_after:
+                if time_to_rotate:
+                    self._rotate_descriptors(self.rotate_to)
+                    t = time.time()
+                else:
+                    time.sleep(1)
 
     def _rotate_descriptors(self, target_dir):
         """
