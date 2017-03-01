@@ -8,6 +8,7 @@ import queue
 import os
 import shutil
 import urllib
+import threading
 
 from collections import defaultdict
 from itertools import islice
@@ -97,7 +98,8 @@ class BtfxWss:
 
         # Set up variables for receiver and main loop threads
         self.running = False
-        self._paused = False
+        self._receiver_lock = threading.Lock()
+        self._processor_lock = threading.Lock()
         self.q = queue.Queue()
         self.receiver_thread = None
         self.processing_thread = None
@@ -214,7 +216,7 @@ class BtfxWss:
         Pauses the client
         :return:
         """
-        self._paused = True
+        self._receiver_lock.acquire()
         log.info("BtfxWss.pause(): Pausing client..")
 
     def unpause(self):
@@ -222,7 +224,7 @@ class BtfxWss:
         Unpauses the client
         :return:
         """
-        self._paused = False
+        self._receiver_lock.release()
         log.info("BtfxWss.pause(): Unpausing client..")
 
     def start(self):
@@ -330,23 +332,24 @@ class BtfxWss:
         :return:
         """
         while self.running:
-            if self._paused:
+            if self._receiver_lock.acquire(blocking=False):
+                try:
+                    raw = self.conn.recv()
+                except WebSocketTimeoutException:
+                    continue
+                except WebSocketConnectionClosedException:
+                    # this needs to restart the client, while keeping track
+                    # track of the currently subscribed channels!
+                    self.conn = None
+                    self.cmd_q.put('restart')
+                except AttributeError:
+                    # self.conn is None, idle loop until shutdown of thread
+                    continue
+                msg = time.time(), json.loads(raw)
+                self.q.put(msg)
+                self._receiver_lock.release()
+            else:
                 time.sleep(0.5)
-                continue
-            try:
-                raw = self.conn.recv()
-            except WebSocketTimeoutException:
-                continue
-            except WebSocketConnectionClosedException:
-                # this needs to restart the client, while keeping track
-                # track of the currently subscribed channels!
-                self.conn = None
-                self.cmd_q.put('restart')
-            except AttributeError:
-                # self.conn is None, idle loop until shutdown of thread
-                continue
-            msg = time.time(), json.loads(raw)
-            self.q.put(msg)
 
     def process(self):
         """
@@ -356,41 +359,45 @@ class BtfxWss:
         """
 
         while self.running:
+            if self._processor_lock.acquire(blocking=False):
 
-            if self.ping_timer:
-                try:
-                    self._check_ping()
-                except TimeoutError:
-                    log.exception("BtfxWss.ping(): TimedOut! (%ss)" %
-                                  self.ping_timer)
-            if not self.conn:
-                # The connection was killed - initiate restart
-                self.restart(soft=True)
-
-            skip_processing = False
-
-            try:
-                ts, data = self.q.get(timeout=0.1)
-            except queue.Empty:
-                skip_processing = True
-                ts = time.time()
-
-            if not skip_processing:
-                if isinstance(data, list):
-                    self.handle_data(ts, data)
-                else:  # Not a list, hence it could be a response
+                if self.ping_timer:
                     try:
-                        self.handle_response(ts, data)
-                    except (UnknownEventError, Exception) as e:
-                        if e is UnknownEventError:
-                            # We don't know what event this is- Raise an error & log data!
-                            log.exception("main() - UnknownEventError: %s",
-                                          data)
-                        else:
-                            log.exception("main() - Unknown Exception: %s", data)
-                        self.cmd_q.put('stop')
-                        raise
-            self._check_heartbeats(ts)
+                        self._check_ping()
+                    except TimeoutError:
+                        log.exception("BtfxWss.ping(): TimedOut! (%ss)" %
+                                      self.ping_timer)
+                if not self.conn:
+                    # The connection was killed - initiate restart
+                    self.restart(soft=True)
+
+                skip_processing = False
+
+                try:
+                    ts, data = self.q.get(timeout=0.1)
+                except queue.Empty:
+                    skip_processing = True
+                    ts = time.time()
+
+                if not skip_processing:
+                    if isinstance(data, list):
+                        self.handle_data(ts, data)
+                    else:  # Not a list, hence it could be a response
+                        try:
+                            self.handle_response(ts, data)
+                        except (UnknownEventError, Exception) as e:
+                            if e is UnknownEventError:
+                                # We don't know what event this is- Raise an error & log data!
+                                log.exception("main() - UnknownEventError: %s",
+                                              data)
+                            else:
+                                log.exception("main() - Unknown Exception: %s", data)
+                            self.cmd_q.put('stop')
+                            raise
+                self._check_heartbeats(ts)
+                self._processor_lock.release()
+            else:
+                time.sleep(0.5)
 
     ##
     # Response Message Handlers
@@ -857,7 +864,7 @@ class BtfxWssRaw(BtfxWss):
     """
 
     def __init__(self, key=None, secret=None, addr=None,
-                 output_dir=None, rotate_after=None):
+                 output_dir=None, rotate_after=None, rotate_to=None):
         """
         Initializes BtfxWssRaw Instance.
         :param key: Api Key as string
@@ -866,11 +873,13 @@ class BtfxWssRaw(BtfxWss):
         :param output_dir: Directory to create file descriptors in
         :param rotate_after: time in seconds, after which descriptor ought to be
                              rotated. Default 3600*24s
+        :param rotate_to: path as str, target folder to copy data to
         """
         super(BtfxWssRaw, self).__init__(key=key, secret=secret, addr=addr)
 
         self.tar_dir = output_dir if output_dir else '/tmp/'
         self.rotate_after = rotate_after if rotate_after else 3600 * 24
+        self.rotate_to = rotate_to if rotate_to else '/var/tmp/data/'
 
         # File Desciptor Variables
         self.tickers = None
@@ -914,35 +923,38 @@ class BtfxWssRaw(BtfxWss):
         t = time.time()
         while self.running:
             if time.time() - t >= self.rotate_after:
-                self._rotate_descriptors('/var/tmp/data/')
+                self._rotate_descriptors(self.rotate_to)
                 t = time.time()
             else:
                 time.sleep(1)
 
     def _rotate_descriptors(self, target_dir):
         """
-        Closes file descriptors, renames the files and moves them to target_dir.
-        Afterwards, opens new batch of file descriptors.
+        Acquires the processor lock and cCloses file descriptors, renames the
+        files and moves them to target_dir.
+        Afterwards, opens new batch of file descriptors and releases the lock.
         :param target_dir: str, path.
         :return:
         """
-        # close file descriptors
-        self._close_file_descriptors()
+        with self._processor_lock:
 
-        # Move old files to a new location
-        fnames = ['btfx_tickers.csv', 'btfx_books.csv', 'btfx_rawbooks.csv',
-                  'btfx_candles.csv', 'btfx_trades.csv']
-        date = time.strftime('%Y-%m-%d_%H:%M:%S')
-        for fname in fnames:
-            ex_name, dtype = fname.split('_')
-            new_name = ex_name + '_' + date + '_' + dtype
-            src = self.tar_dir+'/'+fname
-            tar = target_dir + '/' + new_name
-            shutil.copy(src, tar)
-            os.remove(src)
+            # close file descriptors
+            self._close_file_descriptors()
 
-        # re-open file descriptors
-        self._init_file_descriptors()
+            # Move old files to a new location
+            fnames = ['btfx_tickers.csv', 'btfx_books.csv', 'btfx_rawbooks.csv',
+                      'btfx_candles.csv', 'btfx_trades.csv']
+            date = time.strftime('%Y-%m-%d_%H:%M:%S')
+            for fname in fnames:
+                ex_name, dtype = fname.split('_')
+                new_name = ex_name + '_' + date + '_' + dtype
+                src = self.tar_dir+'/'+fname
+                tar = target_dir + '/' + new_name
+                shutil.copy(src, tar)
+                os.remove(src)
+
+            # re-open file descriptors
+            self._init_file_descriptors()
 
     def start(self):
         """
