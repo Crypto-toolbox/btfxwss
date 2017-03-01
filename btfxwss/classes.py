@@ -934,17 +934,21 @@ class BtfxWssRaw(BtfxWss):
         :return:
         """
         t = time.time()
+        rotated = False
         while self.running:
+
             time_to_rotate = ((time.time() - t >= self.rotate_after)
                               if self.rotate_after
                               else (datetime.datetime.now().strftime('%H:%M') ==
                                     self.rotate_at))
-            if self.rotate_after:
-                if time_to_rotate:
-                    self._rotate_descriptors(self.rotate_to)
-                    t = time.time()
-                else:
-                    time.sleep(1)
+
+            if time_to_rotate and not rotated:
+                self._rotate_descriptors(self.rotate_to)
+                rotated = True
+                t = time.time()
+            else:
+                rotated = False
+                time.sleep(1)
 
     def _rotate_descriptors(self, target_dir):
         """
