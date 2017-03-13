@@ -836,26 +836,20 @@ class BtfxWss:
     # Private Endpoints
     ##
 
-    def sign(self, payload):
+    def authenticate(self):
         """
-        Generates signature to authenticate with websocket API.
-        :param filter: list of str, declares messages you'd like to receive.
-        :param kwargs:
+        Authenticate with API; this automatically subscribe to all private
+        channels available.
         :return:
         """
+        nonce = str(int(time.time() * 1000000000))
+        payload = 'AUTH' + nonce
+        h = hmac.new(self.secret, payload, hashlib.sha384)
+        signature = h.hexdigest()
 
-        auth_msg = urllib.parse.urlencode(payload)
-        signature = hmac.new(self.secret.encode(), auth_msg.encode(),
-                             hashlib.sha384).hexdigest()
-        return signature
-
-    def _construct_auth_request(self, payload, **kwargs):
-        nonce = '1488194803683000' #str(int(time.time()) * 1000)
-        signature = self.sign(payload)
-        request = {'apiKey': self.key, 'event': 'auth', 'authNonce': nonce,
-                   'authPayload': 'AUTH' + nonce, 'authSig': signature}
-        request.update(kwargs)
-        self.conn.send(json.dumps(request))
+        data = {'event': 'auth', 'apiKey': self.key, 'authPayload': payload,
+                'authNonce': nonce, 'authSig': signature}
+        self.conn.send(json.dumps(data))
 
 
 class BtfxWssRaw(BtfxWss):
