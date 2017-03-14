@@ -28,7 +28,7 @@ Starting a session and subscribing to channels.
     log.addHandler(sh)
     log.addHandler(fh)
     
-    wss = BtfxWss()
+    wss = BtfxWss(key='my_api_key', secret='my_api_secret')
     wss.start()
     time.sleep(1)  # give the client some prep time to set itself up.
     
@@ -43,7 +43,17 @@ Starting a session and subscribing to channels.
     t = time.time()
     while time.time() - t < 10:
         pass
+```
+subscribing to authenticated channels:
+```
+    # Sub to all account channels (auth channels)
+    wss.authenticate()
     
+    # You may pass specific channels you want to subscribe to; However, this requires 
+    # you to unauthenticate before, since filters cannot be updated on the fly
+    wss.unauth()
+    filters = ['trading', 'funding']
+    wss.authenticate(*filters)
 ```
 Accessing data stored in `BtfxWss`:
 ```
@@ -51,6 +61,7 @@ Accessing data stored in `BtfxWss`:
     print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
     print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
 ```
+
 Unsubscribing from channels:
 ```
     wss.ticker('BTCUSD')
@@ -62,3 +73,9 @@ Shutting down the client:
 ```
     wss.stop()
 ```
+
+
+## Your help is required
+
+If you find any bugs, error or have feature requests, please don't hesitate to open an issue. 
+Be as descriptive as possible, and I'll look into the matter as soon as I can.
