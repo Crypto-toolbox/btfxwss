@@ -64,8 +64,8 @@ Accessing data stored in `BtfxWss`:
 
 Unsubscribing from channels:
 ```
-    wss.ticker('BTCUSD')
-    wss.ticker('BTCEUR')
+    wss.ticker('BTCUSD', unsubscribe=True)
+    wss.ticker('BTCEUR', unsubscribe=True)
 ```
 
 Shutting down the client:
