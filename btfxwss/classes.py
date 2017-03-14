@@ -748,7 +748,7 @@ class BtfxWss:
             raise UnknownEventError('The Passed event in data[0] is not '
                                     'associated with any data handler!')
         except Exception:
-            log.exception()
+            log.exception("_handle_auth: %s - %s, %s", chan_id, event, data)
             raise
 
     def _handle_auth_trades(self, event, data):
@@ -779,7 +779,7 @@ class BtfxWss:
         self.account['credits'].append((event, data))
 
     def _handle_auth_loans(self, event, data):
-        self.account['loans'].append((event, data))+
+        self.account['loans'].append((event, data))
 
     def _handle_auth_funding_trades(self, event, data):
         self.account['funding_trades'].append((event, data))
