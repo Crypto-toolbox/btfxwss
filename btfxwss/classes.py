@@ -125,10 +125,12 @@ class BtfxWss:
         self.raw_books = defaultdict(Orderbook)
         self._trades = defaultdict(list)
         self.candles = defaultdict(list)
+        self.account = defaultdict(list)
 
         self._event_handlers = {'error': self._raise_error,
                                 'unsubscribed': self._handle_unsubscribed,
                                 'subscribed': self._handle_subscribed,
+                                'auth': self._handle_subscribed,
                                 'info': self._handle_info,
                                 'pong': self._handle_pong,
                                 'conf': self._handle_conf}
@@ -136,7 +138,8 @@ class BtfxWss:
                                'book': self._handle_book,
                                'raw_book': self._handle_raw_book,
                                'candles': self._handle_candles,
-                               'trades': self._handle_trades}
+                               'trades': self._handle_trades,
+                               'auth': self._handle_auth}
 
         # 1XXXX == Error Code -> raise, 2XXXX == Info Code -> call
         def restart_client():
@@ -193,6 +196,7 @@ class BtfxWss:
                     self._late_heartbeats[chan_id] = ts
                 else:
                     # We know of this already
+                    self.ping()
                     continue
             else:
                 # its not late
@@ -311,17 +315,15 @@ class BtfxWss:
         log.info("BtfxWss.restart(): Restarting client..")
         self.stop()
         self.start()
-        if soft:
-            # copy data
-            channel_labels = self.channel_labels
+        # cache channel labels temporarily
+        channel_labels = self.channel_labels if soft else None
 
-        else:
-            # clear previous channel caches
-            self.channels = {}
-            self.channel_labels = {}
-            self.channel_states = {}
+        # clear previous channel caches
+        self.channels = {}
+        self.channel_labels = {}
+        self.channel_states = {}
 
-        if soft:
+        if channel_labels:
             # re-subscribe to channels
             for channel_name, kwargs in channel_labels:
                 self._subscribe(channel_name, **kwargs)
@@ -705,6 +707,82 @@ class BtfxWss:
             # update
             self.candles[label].append(data)
 
+    def _handle_auth(self, ts, chan_id, data):
+        keys = {'hts': self._handle_auth_trades ,
+                'te': self._handle_auth_trades, 'tu': self._handle_auth_trades,
+                'ps': self._handle_auth_positions,
+                'pn': self._handle_auth_positions,
+                'pu': self._handle_auth_positions,
+                'pc': self._handle_auth_positions,
+                'os': self._handle_auth_orders, 'on': self._handle_auth_orders,
+                'ou': self._handle_auth_orders, 'oc': self._handle_auth_orders,
+                'hos': self._handle_auth_orders, 'ws': self._handle_auth_wallet,
+                'wu': self._handle_auth_wallet, 'bs': self._handle_auth_balance,
+                'bu': self._handle_auth_balance,
+                'mis': self._handle_auth_margin_info,
+                'miu': self._handle_auth_margin_info,
+                'fis': self._handle_auth_funding_info,
+                'fiu': self._handle_auth_funding_info,
+                'fos': self._handle_auth_offers, 'fon': self._handle_auth_offers,
+                'fou': self._handle_auth_offers, 'foc': self._handle_auth_offers,
+                'hfos': self._handle_auth_offers,
+                'fcs': self._handle_auth_credits,
+                'fcn': self._handle_auth_credits,
+                'fcu': self._handle_auth_credits,
+                'fcc': self._handle_auth_credits,
+                'hfcs': self._handle_auth_credits,
+                'fls': self._handle_auth_loans, 'fln': self._handle_auth_loans,
+                'flu': self._handle_auth_loans, 'flc': self._handle_auth_loans,
+                'hfls': self._handle_auth_loans,
+                'hfts': self._handle_auth_funding_trades,
+                'fte': self._handle_auth_funding_trades,
+                'ftu': self._handle_auth_funding_trades}
+
+        event, *data = data
+
+        try:
+            keys[event](event, data)
+        except KeyError:
+            log.exception('%s; %s', chan_id, data)
+            raise UnknownEventError('The Passed event in data[0] is not '
+                                    'associated with any data handler!')
+        except Exception:
+            log.exception()
+            raise
+
+    def _handle_auth_trades(self, event, data):
+        self.account['trades'].append((event, data))
+
+    def _handle_auth_positions(self, event, data):
+        self.account['positions'].append((event, data))
+
+    def _handle_auth_orders(self, event, data):
+        self.account['orders'].append((event, data))
+
+    def _handle_auth_wallet(self, event, data):
+        self.account['wallet'].append((event, data))
+
+    def _handle_auth_balance(self, event, data):
+        self.account['balance'].append((event, data))
+
+    def _handle_auth_margin_info(self, event, data):
+        self.account['margin_info'].append((event, data))
+
+    def _handle_auth_funding_info(self, event, data):
+        self.account['funding_info'].append((event, data))
+
+    def _handle_auth_offers(self, event, data):
+        self.account['offers'].append((event, data))
+
+    def _handle_auth_credits(self, event, data):
+        self.account['credits'].append((event, data))
+
+    def _handle_auth_loans(self, event, data):
+        self.account['loans'].append((event, data))+
+
+    def _handle_auth_funding_trades(self, event, data):
+        self.account['funding_trades'].append((event, data))
+
     ##
     # Commands
     ##
@@ -836,7 +914,7 @@ class BtfxWss:
     # Private Endpoints
     ##
 
-    def authenticate(self):
+    def authenticate(self, *filters):
         """
         Authenticate with API; this automatically subscribe to all private
         channels available.
@@ -848,7 +926,7 @@ class BtfxWss:
         signature = h.hexdigest()
 
         data = {'event': 'auth', 'apiKey': self.key, 'authPayload': payload,
-                'authNonce': nonce, 'authSig': signature}
+                'authNonce': nonce, 'authSig': signature, 'filter': filters}
         self.conn.send(json.dumps(data))
 
 
@@ -894,6 +972,7 @@ class BtfxWssRaw(BtfxWss):
         self.raw_books = None
         self._trades = None
         self.candles = None
+        self.account = None
 
         self.rotator_thread = None
 
@@ -909,6 +988,8 @@ class BtfxWssRaw(BtfxWss):
         self.raw_books = open(path + 'btfx_rawbooks.csv', 'a', encoding='UTF-8')
         self._trades = open(path + 'btfx_trades.csv', 'a', encoding='UTF-8')
         self.candles = open(path + 'btfx_candles.csv', 'a', encoding='UTF-8')
+        if self.key and self.secret:
+            self.account = open(path + 'btfx_account.csv', 'a', encoding='UTF-8')
 
     def _close_file_descriptors(self):
         """
@@ -920,6 +1001,8 @@ class BtfxWssRaw(BtfxWss):
         self.raw_books.close()
         self._trades.close()
         self.candles.close()
+        if self.account:
+            self.account.close()
 
     def _rotate(self):
         """
@@ -960,6 +1043,8 @@ class BtfxWssRaw(BtfxWss):
             # Move old files to a new location
             fnames = ['btfx_tickers.csv', 'btfx_books.csv', 'btfx_rawbooks.csv',
                       'btfx_candles.csv', 'btfx_trades.csv']
+            if self.account:
+                fnames.append('btfx_account.csv')
             date = time.strftime('%Y-%m-%d_%H:%M:%S')
             for fname in fnames:
                 ex_name, dtype = fname.split('_')
@@ -1068,3 +1153,15 @@ class BtfxWssRaw(BtfxWss):
         """
         js = json.dumps((ts, self.channel_labels[chan_id], data))
         self.candles.write(js + '\n')
+
+    def _handle_auth(self, ts, chan_id, data):
+        """
+        Store Account specific data received by authenticating to the API in
+        self.account, as json.
+        :param ts: timestamp, declares when data was received by the client
+        :param chan_id: int, channel id
+        :param data: list of data received via wss
+        :return:
+        """
+        js = json.dumps((ts, self.channel_labels[chan_id], data))
+        self.account.write(js + '\n')
