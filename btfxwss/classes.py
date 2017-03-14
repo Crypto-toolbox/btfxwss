@@ -131,6 +131,7 @@ class BtfxWss:
                                 'unsubscribed': self._handle_unsubscribed,
                                 'subscribed': self._handle_subscribed,
                                 'auth': self._handle_subscribed,
+                                'unauth': self._handle_unsubscribed,
                                 'info': self._handle_info,
                                 'pong': self._handle_pong,
                                 'conf': self._handle_conf}
@@ -929,6 +930,9 @@ class BtfxWss:
                 'authNonce': nonce, 'authSig': signature, 'filter': filters}
         self.conn.send(json.dumps(data))
 
+    def unauth(self):
+        js = {'event': 'unauth', 'chanId': 0}
+        self.conn.send(json.dumps(js))
 
 class BtfxWssRaw(BtfxWss):
     """
