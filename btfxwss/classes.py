@@ -343,7 +343,7 @@ class BtfxWss:
                     continue
                 except WebSocketConnectionClosedException:
                     # this needs to restart the client, while keeping track
-                    # track of the currently subscribed channels!
+                    # of the currently subscribed channels!
                     self.conn = None
                     self.cmd_q.put('restart')
                 except AttributeError:
@@ -353,6 +353,7 @@ class BtfxWss:
                 self.q.put(msg)
                 self._receiver_lock.release()
             else:
+                # The receiver_lock was locked, idling until available
                 time.sleep(0.5)
 
     def process(self):
@@ -389,15 +390,18 @@ class BtfxWss:
                     else:  # Not a list, hence it could be a response
                         try:
                             self.handle_response(ts, data)
-                        except (UnknownEventError, Exception) as e:
-                            if e is UnknownEventError:
-                                # We don't know what event this is- Raise an error & log data!
-                                log.exception("main() - UnknownEventError: %s",
-                                              data)
-                            else:
-                                log.exception("main() - Unknown Exception: %s", data)
+                        except UnknownEventError:
+
+                            # We don't know what event this is- Raise an
+                            # error & log data!
+                            log.exception("main() - UnknownEventError: %s",
+                                          data)
+                            log.info("main() - Shutting Down due to "
+                                     "Unknown Error!")
                             self.cmd_q.put('stop')
-                            raise
+                        except ConnectionResetError:
+                            self.cmd_q.put('restart')
+
                 self._check_heartbeats(ts)
                 self._processor_lock.release()
             else:
@@ -709,7 +713,7 @@ class BtfxWss:
             self.candles[label].append(data)
 
     def _handle_auth(self, ts, chan_id, data):
-        keys = {'hts': self._handle_auth_trades ,
+        keys = {'hts': self._handle_auth_trades,
                 'te': self._handle_auth_trades, 'tu': self._handle_auth_trades,
                 'ps': self._handle_auth_positions,
                 'pn': self._handle_auth_positions,
