@@ -350,6 +350,7 @@ class BtfxWss:
                     # self.conn is None, idle loop until shutdown of thread
                     continue
                 msg = time.time(), json.loads(raw)
+                log.debug("receiver Thread: Data Received: %s", msg)
                 self.q.put(msg)
                 self._receiver_lock.release()
             else:
@@ -400,6 +401,8 @@ class BtfxWss:
                                      "Unknown Error!")
                             self.cmd_q.put('stop')
                         except ConnectionResetError:
+                            log.info("processor Thread: Connection Was reset, "
+                                     "initiating restart")
                             self.cmd_q.put('restart')
 
                 self._check_heartbeats(ts)
@@ -419,6 +422,7 @@ class BtfxWss:
         :param resp: dict, containing info or error keys, among others
         :return:
         """
+        log.info("handle_response: Handling response %s", resp)
         event = resp['event']
         try:
             self._event_handlers[event](ts, **resp)
