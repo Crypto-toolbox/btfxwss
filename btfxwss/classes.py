@@ -7,7 +7,6 @@ import hmac
 import queue
 import os
 import shutil
-import urllib
 import threading
 import datetime
 
@@ -34,7 +33,6 @@ from btfxwss.exceptions import FaultyPayloadError
 
 # Init Logging Facilities
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
 
 
 class Orders:
