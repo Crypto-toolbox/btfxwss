@@ -373,7 +373,7 @@ class BtfxWss:
                                       self.ping_timer)
                 if not self.conn:
                     # The connection was killed - initiate restart
-                    self.restart(soft=True)
+                    self.cmd_q.put('restart')
 
                 skip_processing = False
 
