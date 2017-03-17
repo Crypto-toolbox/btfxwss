@@ -315,7 +315,7 @@ class BtfxWss:
         self.stop()
         self.start()
         # cache channel labels temporarily
-        channel_labels = self.channel_labels if soft else None
+        channel_labels = [self.channel_labels[k] for k in self.channel_labels] if soft else None
 
         # clear previous channel caches
         self.channels = {}
