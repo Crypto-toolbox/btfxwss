@@ -407,7 +407,10 @@ class BtfxWss:
                                      "initiating restart")
                             self.cmd_q.put('restart')
 
-                self._check_heartbeats(ts)
+                try:
+                    self._check_heartbeats(ts)
+                except (WebSocketConnectionClosedException, ConnectionResetError):
+                    self.cmd_q.put('restart')
                 self._processor_lock.release()
             else:
                 time.sleep(0.5)
