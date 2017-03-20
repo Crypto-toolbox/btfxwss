@@ -187,12 +187,19 @@ class BtfxWss:
         for chan_id in self._heartbeats:
             if ts - self._heartbeats[chan_id] >= 10:
                 if chan_id not in self._late_heartbeats:
-                    # This is newly late; escalate
-                    log.warning("BtfxWss.heartbeats: Channel %s hasn't sent a "
-                                "heartbeat in %s seconds!",
-                                self.channel_labels[chan_id],
-                                ts - self._heartbeats[chan_id])
-                    self._late_heartbeats[chan_id] = ts
+                    try:
+                        # This is newly late; escalate
+                        log.warning("BtfxWss.heartbeats: Channel %s hasn't sent a "
+                                    "heartbeat in %s seconds!",
+                                    self.channel_labels[chan_id],
+                                    ts - self._heartbeats[chan_id])
+                        self._late_heartbeats[chan_id] = ts
+                    except KeyError:
+                        # This channel ID Is not known to us - log and raise
+                        log.error("BtfxWss.heartbeats: Channel %s is not "
+                                  "registered in the client's registry! "
+                                  "Restarting client to avoid errors..", chan_id)
+                        raise UnknownChannelError
                 else:
                     # We know of this already
                     self.ping()
@@ -409,8 +416,10 @@ class BtfxWss:
 
                 try:
                     self._check_heartbeats(ts)
-                except (WebSocketConnectionClosedException, ConnectionResetError):
+                except (WebSocketConnectionClosedException, ConnectionResetError,
+                        UnknownChannelError):
                     self.cmd_q.put('restart')
+
                 self._processor_lock.release()
             else:
                 time.sleep(0.5)
