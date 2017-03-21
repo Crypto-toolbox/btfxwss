@@ -402,13 +402,12 @@ class BtfxWss:
                             self.handle_response(ts, data)
                         except UnknownEventError:
 
-                            # We don't know what event this is- Raise an
-                            # error & log data!
+                            # We don't know what event this is- restart & log data!
                             log.exception("main() - UnknownEventError: %s",
                                           data)
                             log.info("main() - Shutting Down due to "
                                      "Unknown Error!")
-                            self.cmd_q.put('stop')
+                            self.cmd_q.put('restart')
                         except ConnectionResetError:
                             log.info("processor Thread: Connection Was reset, "
                                      "initiating restart")
