@@ -378,7 +378,7 @@ class BtfxWss:
                     except TimeoutError:
                         log.exception("BtfxWss.ping(): TimedOut! (%ss)" %
                                       self.ping_timer)
-                    except (WebSocketConnectionClosedException,
+                    except (WebSocketConnectionClosedException, WebSocketTimeoutException,
                             ConnectionResetError):
                         log.exception("BtfxWss.ping(): Connection Error!")
                         self.conn = None
