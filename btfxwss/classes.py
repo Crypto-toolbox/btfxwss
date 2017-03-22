@@ -202,7 +202,10 @@ class BtfxWss:
                         raise UnknownChannelError
                 else:
                     # We know of this already
-                    self.ping()
+                    try:
+                        self.ping()
+                    except (WebSocketConnectionClosedException, WebSocketTimeoutException):
+                        self.cmd_q('restart')
                     continue
             else:
                 # its not late
@@ -353,6 +356,10 @@ class BtfxWss:
                     self.cmd_q.put('restart')
                 except AttributeError:
                     # self.conn is None, idle loop until shutdown of thread
+                    continue
+                except BlockingIOError:
+                    # Resource temporarily unavailable
+                    log.info("Receiver Thread: Resource temporarily unavailable!")
                     continue
                 msg = time.time(), json.loads(raw)
                 log.debug("receiver Thread: Data Received: %s", msg)
@@ -573,8 +580,11 @@ class BtfxWss:
         :param ts: timestamp, declares when data was received by the client
         :return:
         """
-        log.info("BtfxWss.ping(): Ping received! (%ss)",
-                 ts - self.ping_timer)
+        try:
+            log.info("BtfxWss.ping(): Ping received! (%ss)",
+                     ts - self.ping_timer)
+        except TypeError:
+            log.info("BtfxWss.ping(): Ping received!")
         self.ping_timer = None
 
     def _handle_conf(self, ts, *args, **kwargs):
