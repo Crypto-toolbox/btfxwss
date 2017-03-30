@@ -57,7 +57,7 @@ subscribing to authenticated channels:
 ```
 Accessing data stored in `BtfxWss`:
 ```
-    print(wss.tickers['BTCUSD])
+    print(wss.tickers['BTCUSD'])
     print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
     print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
 ```
