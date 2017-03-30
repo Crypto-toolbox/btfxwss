@@ -41,7 +41,7 @@ class Orders:
         self._reverse = reverse
 
     def __call__(self):
-        return [self._orders[i]() for i in sorted(self._orders.keys(),
+        return [self._orders[i] for i in sorted(self._orders.keys(),
                                                   reverse=self._reverse)]
 
     def __repr__(self):
