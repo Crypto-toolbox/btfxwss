@@ -396,7 +396,12 @@ class BtfxWss:
 
                 if not skip_processing:
                     if isinstance(data, list):
-                        self.handle_data(ts, data)
+                        try:
+                            self.handle_data(ts, data)
+                        except FaultyPayloadError as e:
+                            # Data had unexpected format, log and continue
+                            log.exception(e)
+                            
                     else:  # Not a list, hence it could be a response
                         try:
                             self.handle_response(ts, data)
@@ -606,6 +611,8 @@ class BtfxWss:
         except KeyError:
             raise NotRegisteredError("handle_data: %s not registered - "
                                      "Payload: %s" % (chan_id, msg))
+        except ValueError as e:
+            raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
 
     @staticmethod
     def _handle_hearbeat(*args, **kwargs):
