@@ -401,7 +401,7 @@ class BtfxWss:
                         except FaultyPayloadError as e:
                             # Data had unexpected format, log and continue
                             log.exception(e)
-                            
+
                     else:  # Not a list, hence it could be a response
                         try:
                             self.handle_response(ts, data)
@@ -867,14 +867,14 @@ class BtfxWss:
         q = {'event': 'unsubscribe', 'chanId': chan_id}
         self.conn.send(json.dumps(q))
 
-    def ticker(self, pair, unsubsribe=False, **kwargs):
+    def ticker(self, pair, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's ticker channel.
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
         """
-        if unsubsribe:
+        if unsubscribe:
             self._unsubscribe('ticker', symbol=pair, **kwargs)
         else:
             self._subscribe('ticker', symbol=pair, **kwargs)
