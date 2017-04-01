@@ -855,7 +855,7 @@ class BtfxWss:
         log.debug("_subscribe: %s", q)
         self.conn.send(json.dumps(q))
 
-    def _unsubscribe(self, channel_name):
+    def _unsubscribe(self, channel_name, **kwargs):
         if not self.conn:
             log.error("_unsubscribe(): Cannot unsubscribe from channel,"
                       "since the client has not been started!")
@@ -865,6 +865,7 @@ class BtfxWss:
         except KeyError:
             raise NotRegisteredError("_unsubscribe(): %s" % channel_name)
         q = {'event': 'unsubscribe', 'chanId': chan_id}
+        q.update(kwargs)
         self.conn.send(json.dumps(q))
 
     def ticker(self, pair, unsubscribe=False, **kwargs):
