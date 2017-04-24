@@ -647,8 +647,10 @@ class BtfxWss:
         :param data: dict, tuple or list of data received via wss
         :return:
         """
+        log.debug("ts: %s\tchan_id: %s\tdata: %s", ts, chan_id, data)
         label = self.channel_labels[chan_id][1]['pair']
-        if isinstance(data[0][0], list):
+
+        if all(isinstance(elem, list) for elem in data):
             # snapshot
             for order in data:
                 price, count, amount = order
