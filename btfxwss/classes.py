@@ -956,7 +956,7 @@ class BtfxWss:
         """
         nonce = str(int(time.time() * 1000000000))
         payload = 'AUTH' + nonce
-        h = hmac.new(self.secret, payload, hashlib.sha384)
+        h = hmac.new(self.secret.encode(), payload.encode(), hashlib.sha384)
         signature = h.hexdigest()
 
         data = {'event': 'auth', 'apiKey': self.key, 'authPayload': payload,
