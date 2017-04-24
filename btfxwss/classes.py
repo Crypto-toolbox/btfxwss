@@ -602,6 +602,8 @@ class BtfxWss:
         except ValueError as e:
             # Too many or too few values
             raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
+        if isinstance(data, list) and len(data) == 1:
+            data = data[0]
         self._heartbeats[chan_id] = ts
         if data[0] == 'hb':
             self._handle_hearbeat(ts, chan_id)
