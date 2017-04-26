@@ -731,8 +731,8 @@ class BtfxWss:
         :param data: list of data received via wss
         :return:
         """
-        label = self.channel_labels[chan_id][1]['pair']
-        if isinstance(data[0][0], list):
+        label = self.channel_labels[chan_id][1]['key']
+        if all(isinstance(elem, list) for elem in data):
             # snapshot
             for candle in data:
                 self.candles[label].append(candle)
