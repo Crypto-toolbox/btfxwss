@@ -41,7 +41,7 @@ class Orders:
         self._reverse = reverse
 
     def __call__(self):
-        return [self._orders[i]() for i in sorted(self._orders.keys(),
+        return [self._orders[i] for i in sorted(self._orders.keys(),
                                                   reverse=self._reverse)]
 
     def __repr__(self):
@@ -403,7 +403,12 @@ class BtfxWss:
 
                 if not skip_processing:
                     if isinstance(data, list):
-                        self.handle_data(ts, data)
+                        try:
+                            self.handle_data(ts, data)
+                        except FaultyPayloadError as e:
+                            # Data had unexpected format, log and continue
+                            log.exception(e)
+                            
                     else:  # Not a list, hence it could be a response
                         try:
                             self.handle_response(ts, data)
@@ -607,8 +612,10 @@ class BtfxWss:
         except ValueError as e:
             # Too many or too few values
             raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
+        if isinstance(data, list) and len(data) == 1:
+            data = data[0]
         self._heartbeats[chan_id] = ts
-        if data[0] == 'hb':
+        if data == 'hb':
             self._handle_hearbeat(ts, chan_id)
             return
         try:
@@ -616,6 +623,8 @@ class BtfxWss:
         except KeyError:
             raise NotRegisteredError("handle_data: %s not registered - "
                                      "Payload: %s" % (chan_id, msg))
+        except ValueError as e:
+            raise FaultyPayloadError("handle_data(): %s - %s" % (msg, e))
 
     @staticmethod
     def _handle_hearbeat(*args, **kwargs):
@@ -648,8 +657,10 @@ class BtfxWss:
         :param data: dict, tuple or list of data received via wss
         :return:
         """
+        log.debug("ts: %s\tchan_id: %s\tdata: %s", ts, chan_id, data)
         label = self.channel_labels[chan_id][1]['pair']
-        if isinstance(data[0][0], list):
+
+        if all(isinstance(elem, list) for elem in data):
             # snapshot
             for order in data:
                 price, count, amount = order
@@ -730,8 +741,8 @@ class BtfxWss:
         :param data: list of data received via wss
         :return:
         """
-        label = self.channel_labels[chan_id][1]['pair']
-        if isinstance(data[0][0], list):
+        label = self.channel_labels[chan_id][1]['key']
+        if all(isinstance(elem, list) for elem in data):
             # snapshot
             for candle in data:
                 self.candles[label].append(candle)
@@ -954,7 +965,7 @@ class BtfxWss:
         """
         nonce = str(int(time.time() * 1000000000))
         payload = 'AUTH' + nonce
-        h = hmac.new(self.secret, payload, hashlib.sha384)
+        h = hmac.new(self.secret.encode(), payload.encode(), hashlib.sha384)
         signature = h.hexdigest()
 
         data = {'event': 'auth', 'apiKey': self.key, 'authPayload': payload,
