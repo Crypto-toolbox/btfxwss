@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class QueueProcessor(Thread):
-    def __init__(self, data_q, log_level=None,
+    def __init__(self, data_q, channel_directory, log_level=None,
                  *args, **kwargs):
         super(QueueProcessor, self).__init__(*args, **kwargs)
         self.q = data_q
@@ -31,7 +31,7 @@ class QueueProcessor(Thread):
         self._registry = {}
 
         # dict to translate channel ids to channel names and vice versa
-        self.channel_directory = {}
+        self.channel_directory = channel_directory
 
         # dict to register a method with a channel id
         self.channel_handlers = {}
@@ -106,7 +106,10 @@ class QueueProcessor(Thread):
         self.channel_handlers[channel_id] = self._data_handlers[channel_name]
 
         # Create a channel_name, symbol tuple to identify channels of same type
-        identifier = (channel_name, symbol)
+        if 'key' in config:
+            identifier = (channel_name, symbol, config['key'].split(':')[1])
+        else:
+            identifier = (channel_name, symbol)
         self.channel_handlers[channel_id] = identifier
         self.channel_directory[(channel_name, symbol)] = channel_id
         self.log.info("Subscription succesful for channel %s", identifier)
