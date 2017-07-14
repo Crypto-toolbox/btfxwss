@@ -1,3 +1,3 @@
-from btfxwss.classes import BtfxWss, BtfxWssRaw
+from btfxwss.classes import BtfxWss
 
 
