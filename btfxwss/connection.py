@@ -238,7 +238,6 @@ class WebSocketConnection(Thread):
         :return:
         """
         self.q.put((event, data, *args))
-        print(self.q.get())
 
     def _connection_timed_out(self):
         """Issues a reconnection if the connection timed out.
