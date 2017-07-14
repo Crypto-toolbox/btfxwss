@@ -1,33 +1,10 @@
 # Import Built-Ins
 import logging
-import json
-import time
-import hashlib
-import hmac
-import queue
-import os
-import shutil
-from threading import Thread, Event
-import datetime
-
 from collections import defaultdict
-from itertools import islice
-from threading import Thread
 
 # Import Homebrew
 from btfxwss.connection import WebSocketConnection
 from btfxwss.queue_processor import QueueProcessor
-# import Server-side Exceptions
-from btfxwss.exceptions import InvalidBookLengthError, GenericSubscriptionError
-from btfxwss.exceptions import NotSubscribedError,  AlreadySubscribedError
-from btfxwss.exceptions import InvalidPairError, InvalidChannelError
-from btfxwss.exceptions import InvalidEventError, InvalidBookPrecisionError
-
-# import Client-side Exceptions
-from btfxwss.exceptions import UnknownEventError, UnknownWSSError
-from btfxwss.exceptions import UnknownWSSInfo, AlreadyRegisteredError
-from btfxwss.exceptions import NotRegisteredError, UnknownChannelError
-from btfxwss.exceptions import FaultyPayloadError
 
 
 # Init Logging Facilities
@@ -54,10 +31,9 @@ class BtfxWss:
         # Set up book-keeping variables & configurations
         self.channel_configs = defaultdict(dict)  # Variables, as set by subscribe command
 
-        self.q = queue.Queue()
-        self.conn = WebSocketConnection(self.q, log_level=log_level,
+        self.conn = WebSocketConnection(log_level=log_level,
                                         **wss_kwargs)
-        self.queue_processor = QueueProcessor(self.q,
+        self.queue_processor = QueueProcessor(self.conn.q,
                                               log_level=log_level)
 
     @property
