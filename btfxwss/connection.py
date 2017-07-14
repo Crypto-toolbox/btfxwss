@@ -305,13 +305,15 @@ class WebSocketConnection(Thread):
             self._info_handler(data)
         elif event == 'error':
             self._error_handler(data)
-        elif event in ('subscribe', 'unsubscribe', 'conf'):
+        elif event in ('subscribe', 'unsubscribe', 'conf', 'auth', 'unauth'):
             self._response_handler(event, data, ts)
         else:
             self.log.error("Unhandled event: %s, data: %s", event, data)
 
     def _response_handler(self, event, data, ts):
-        """Handles responses to (un)subscribe and conf commands
+        """Handles responses to (un)subscribe and conf commands.
+
+        Passes data up to client.
 
         :param data:
         :param ts:
