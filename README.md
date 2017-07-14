@@ -6,8 +6,9 @@ work in progress.
 
 Offers graceful exception handling of common server errors.
 
-Data is stored within the object's attributes for `BtfxWss`;
-`BtfxWssRaw` dumps data to a given folder on the disk. 
+Data is stored within `BtfxWss` as `Queue`s. There are convenience
+methods available to retrieve a queue for a given type. Consult
+the code for documentation.
 
 
 # Sample Code:
@@ -28,13 +29,13 @@ Starting a session and subscribing to channels.
     log.addHandler(sh)
     log.addHandler(fh)
     
-    wss = BtfxWss(key='my_api_key', secret='my_api_secret')
+    wss = BtfxWss()
     wss.start()
     time.sleep(1)  # give the client some prep time to set itself up.
     
     # Subscribe to some channels
-    wss.ticker('BTCUSD')
-    wss.order_book('BTCUSD')
+    wss.subscribe_to_ticker('BTCUSD')
+    wss.subscribe_to_order_book('BTCUSD')
     
     # Send a ping - if this returns silently, everything's fine.
     wss.ping()
@@ -44,22 +45,12 @@ Starting a session and subscribing to channels.
     while time.time() - t < 10:
         pass
 ```
-subscribing to authenticated channels:
-```
-    # Sub to all account channels (auth channels)
-    wss.authenticate()
-    
-    # You may pass specific channels you want to subscribe to; However, this requires 
-    # you to unauthenticate before, since filters cannot be updated on the fly
-    wss.unauth()
-    filters = ['trading', 'funding']
-    wss.authenticate(*filters)
-```
+
 Accessing data stored in `BtfxWss`:
 ```
-    print(wss.tickers['BTCUSD'])
-    print(wss.books['BTCUSD'].bids())  # prints all current bids for the BTCUSD order book
-    print(wss.books['BTCUSD'].asks())  # prints all current asks for the BTCUSD order book
+    ticker_q = wss.tickers('BTCUSD')  # returns a Queue object. 
+    while not ticker_q.empty():
+        print(ticker_q.get())
 ```
 
 Unsubscribing from channels:
