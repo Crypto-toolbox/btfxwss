@@ -62,7 +62,7 @@ class QueueProcessor(Thread):
 
             dtype, data, ts = message
 
-            if dtype in ('subscribe', 'unsubscribe', 'conf'):
+            if dtype in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
                 try:
                     self._response_handlers[dtype](dtype, data, ts)
                 except KeyError:
