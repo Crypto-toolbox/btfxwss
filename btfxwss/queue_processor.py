@@ -80,7 +80,6 @@ class QueueProcessor(Thread):
                 self.log.error("Unknown dtype on queue! %s", message)
                 continue
 
-
     def _handle_subscribed(self, dtype, data, ts,):
         """
         Handles responses to subscribe() commands - registers a channel id with
@@ -97,7 +96,7 @@ class QueueProcessor(Thread):
         elif 'symbol' in config:
             symbol = config['symbol']
         elif 'key' in config:
-            symbol = config['key'].split(':')[2][1:]  # layout type:interval:tPair
+            symbol = config['key'].split(':')[2][1:]  #layout type:interval:tPair
         else:
             symbol = None
 
@@ -202,7 +201,7 @@ class QueueProcessor(Thread):
         entry = (data, ts)
         self.trades[channel_identifier].put(entry)
 
-    def _handle_candles(self, ts, chan_id, data):
+    def _handle_candles(self, dtype, data, ts):
         """
         Stores OHLC data received via wss in self.candles[chan_id]
         :param ts: timestamp, declares when data was received by the client
