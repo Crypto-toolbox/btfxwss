@@ -138,7 +138,7 @@ class WebSocketConnection(Thread):
         """
         self._stop_timers()
 
-        raw, received_at = message, time.time(
+        raw, received_at = message, time.time()
 
 
         try:
