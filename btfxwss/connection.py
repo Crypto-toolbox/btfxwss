@@ -69,14 +69,6 @@ class WebSocketConnection(Thread):
         # Call init of Thread and pass remaining args and kwargs
         super(WebSocketConnection, self).__init__(*args, **kwargs)
 
-    def start(self):
-        """
-        Start the websocket connection and run Thread.start()
-        :return:
-        """
-        self._connect()
-        super(WebSocketConnection, self).start()
-
     def disconnect(self):
         """Disconnects from the websocket connection and joins the Thread.
 
@@ -103,7 +95,7 @@ class WebSocketConnection(Thread):
         Creates a websocket connection.
         :return:
         """
-        self.socket = websocket.WebSocketApp(
+        self.conn = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
             on_message=self._on_message,
@@ -111,7 +103,7 @@ class WebSocketConnection(Thread):
             on_close=self._on_close
         )
 
-        self.socket.run_forever()
+        self.conn.run_forever()
 
         while self.reconnect_required and not self.disconnect_called:
             self.log.info("Attempting to connect again in %s seconds."
@@ -121,8 +113,8 @@ class WebSocketConnection(Thread):
 
             # We need to set this flag since closing the socket will set it to
             # false
-            self.socket.keep_running = True
-            self.socket.run_forever()
+            self.conn.keep_running = True
+            self.conn.run_forever()
 
     def run(self):
         """Main method of Thread.
