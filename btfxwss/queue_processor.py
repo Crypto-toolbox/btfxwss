@@ -77,9 +77,8 @@ class QueueProcessor(Thread):
                     self.log.error("Dtype '%s' does not have a data handler!",
                                    dtype)
             else:
-                log.error("Unknown dtype on queue! %s", message)
+                self.log.error("Unknown dtype on queue! %s", message)
                 continue
-
 
     def _handle_subscribed(self, dtype, data, ts,):
         """
@@ -106,10 +105,11 @@ class QueueProcessor(Thread):
 
         self.channel_handlers[channel_id] = self._data_handlers[channel_name]
 
-        # Create a channel_name, symbol tuple to identifiy channels of same type
+        # Create a channel_name, symbol tuple to identify channels of same type
         identifier = (channel_name, symbol)
         self.channel_handlers[channel_id] = identifier
         self.channel_directory[(channel_name, symbol)] = channel_id
+        self.log.info("Subscription succesful for channel %s", identifier)
 
     def _handle_unsubscribed(self, dtype, data, ts):
         """
@@ -117,7 +117,7 @@ class QueueProcessor(Thread):
         the client.
         :param chanId: int, represent channel id as assigned by server
         """
-        log.debug("_handle_unsubscribed: %s - %s", data, ts)
+        self.log.debug("_handle_unsubscribed: %s - %s - %s", dtype, data, ts)
         channel_id = data.pop('chanId')
 
         # Unregister the channel from all internal attributes
@@ -125,8 +125,10 @@ class QueueProcessor(Thread):
         self.channel_directory.pop(chan_identifier)
         self.channel_handlers.pop(channel_id)
         self.last_update.pop(channel_id)
+        self.log.info("Successfully unsubscribed from %s", chan_identifier)
 
-    def _handle_conf(self, dtype, data, ts, **kwargs):
+    def _handle_conf(self, dtype, data, ts):
+        self.log.debug("_handle_conf: %s - %s - %s", dtype, data, ts)
         self.log.info("Configuration accepted: %s", dtype)
         return
 
@@ -147,6 +149,7 @@ class QueueProcessor(Thread):
         :param data: tuple or list of data received via wss
         :return:
         """
+        self.log.debug("_handle_ticker: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         channel_identifier = self.channel_directory[channel_id]
         entry = (data, ts)
@@ -160,6 +163,7 @@ class QueueProcessor(Thread):
         :param data: dict, tuple or list of data received via wss
         :return:
         """
+        self.log.debug("_handle_book: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         log.debug("ts: %s\tchan_id: %s\tdata: %s", ts, channel_id, data)
         channel_identifier = self.channel_directory[channel_id]
@@ -174,6 +178,7 @@ class QueueProcessor(Thread):
         :param data: dict, tuple or list of data received via wss
         :return:
         """
+        self.log.debug("_handle_raw_book: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         channel_identifier = self.channel_directory[channel_id]
         entry = (data, ts)
@@ -187,6 +192,7 @@ class QueueProcessor(Thread):
         :param data: list of data received via wss
         :return:
         """
+        self.log.debug("_handle_trades: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         channel_identifier = self.channel_directory[channel_id]
         entry = (data, ts)
@@ -200,6 +206,7 @@ class QueueProcessor(Thread):
         :param data: list of data received via wss
         :return:
         """
+        self.log.debug("_handle_candles: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         channel_identifier = self.channel_directory[channel_id]
         entry = (data, ts)
