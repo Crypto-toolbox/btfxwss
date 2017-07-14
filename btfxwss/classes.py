@@ -171,7 +171,7 @@ class BtfxWss:
         self.conn.send(**q)
         self.channel_configs.pop(identifier)
 
-    def ticker(self, pair, unsubscribe=False, **kwargs):
+    def subscribe_to_ticker(self, pair, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's ticker channel.
         :param pair: str, Pair to request data for.
@@ -184,7 +184,7 @@ class BtfxWss:
         else:
             self._subscribe('ticker', identifier, symbol=pair, **kwargs)
 
-    def order_book(self, pair, unsubscribe=False, **kwargs):
+    def subscribe_to_order_book(self, pair, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's order book channel.
         :param pair: str, Pair to request data for.
@@ -197,7 +197,7 @@ class BtfxWss:
         else:
             self._subscribe('book', identifier, symbol=pair, **kwargs)
 
-    def raw_order_book(self, pair, prec=None, unsubscribe=False, **kwargs):
+    def subscribe_to_raw_order_book(self, pair, prec=None, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's raw order book channel.
         :param pair: str, Pair to request data for.
@@ -211,20 +211,20 @@ class BtfxWss:
         else:
             self._subscribe('book', identifier, pair=pair, prec=prec, **kwargs)
 
-    def trades(self, pair, unsubscribe=False, **kwargs):
+    def subscribe_to_trades(self, pair, unsubscribe=False, **kwargs):
         """
         Subscribe to the passed pair's trades channel.
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
         """
-        identifier = ('trades'. pair)
+        identifier = ('trades', pair)
         if unsubscribe:
             self._unsubscribe('trades', identifier, symbol=pair, **kwargs)
         else:
             self._subscribe('trades', identifier, symbol=pair, **kwargs)
 
-    def candles(self, pair, timeframe=None, unsubcribe=False, **kwargs):
+    def subscribe_to_candles(self, pair, timeframe=None, unsubcribe=False, **kwargs):
         """
         Subscribe to the passed pair's OHLC data channel.
         :param pair: str, Pair to request data for.
@@ -247,26 +247,3 @@ class BtfxWss:
             self._unsubscribe('candles', identifier, key=key, **kwargs)
         else:
             self._subscribe('candles', identifier, key=key, **kwargs)
-
-    ##
-    # Private Endpoints
-    ##
-
-    def authenticate(self, *filters):
-        """
-        Authenticate with API; this automatically subscribe to all private
-        channels available.
-        :return:
-        """
-        nonce = str(int(time.time() * 1000000000))
-        payload = 'AUTH' + nonce
-        h = hmac.new(self.secret.encode(), payload.encode(), hashlib.sha384)
-        signature = h.hexdigest()
-
-        data = {'event': 'auth', 'apiKey': self.key, 'authPayload': payload,
-                'authNonce': nonce, 'authSig': signature, 'filter': filters}
-        self.conn.send(json.dumps(data))
-
-    def unauth(self):
-        js = {'event': 'unauth', 'chanId': 0}
-        self.conn.send(json.dumps(js))
