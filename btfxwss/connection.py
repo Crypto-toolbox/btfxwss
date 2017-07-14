@@ -3,6 +3,7 @@ import logging
 import json
 import time
 import websocket
+from queue import Queue
 from threading import Thread, Event, Timer
 
 # Import Third-Party
@@ -20,7 +21,7 @@ class WebSocketConnection(Thread):
     Inspired heavily by ekulyk's PythonPusherClient Connection Class
     https://github.com/ekulyk/PythonPusherClient/blob/master/pusherclient/connection.py
     """
-    def __init__(self, data_q, *args, url=None, timeout=None,
+    def __init__(self, *args, url=None, timeout=None,
                  reconnect_interval=None, log_level=None, **kwargs):
         """Initialize a WebSocketConnection Instance.
 
@@ -35,7 +36,7 @@ class WebSocketConnection(Thread):
         :param kwargs: kwargs for Thread.__ini__()
         """
         # Queue used to pass data up to BTFX client
-        self.q = data_q
+        self.q = Queue()
 
         # Connection Settings
         self.conn = None
@@ -67,7 +68,8 @@ class WebSocketConnection(Thread):
         self.log.setLevel(level=log_level if log_level else logging.INFO)
 
         # Call init of Thread and pass remaining args and kwargs
-        super(WebSocketConnection, self).__init__(*args, **kwargs)
+        Thread.__init__(self)
+        self.daemon = True
 
     def disconnect(self):
         """Disconnects from the websocket connection and joins the Thread.
@@ -78,7 +80,7 @@ class WebSocketConnection(Thread):
         self.disconnect_called.set()
         if self.conn:
             self.conn.close()
-        self.join()
+        self.join(timeout=1)
 
     def reconnect(self):
         """Issues a reconnection by setting the reconnect_required event.
@@ -105,17 +107,17 @@ class WebSocketConnection(Thread):
 
         self.conn.run_forever()
 
-        while (self.reconnect_required.is_set() and
-                   not self.disconnect_called.is_set()):
-            self.log.info("Attempting to connect again in %s seconds."
-                             % self.reconnect_interval)
-            self.state = "unavailable"
-            time.sleep(self.reconnect_interval)
+        while self.reconnect_required.is_set():
+            if not self.disconnect_called.is_set():
+                self.log.info("Attempting to connect again in %s seconds."
+                              % self.reconnect_interval)
+                self.state = "unavailable"
+                time.sleep(self.reconnect_interval)
 
-            # We need to set this flag since closing the socket will set it to
-            # false
-            self.conn.keep_running = True
-            self.conn.run_forever()
+                # We need to set this flag since closing the socket will
+                # set it to False
+                self.conn.keep_running = True
+                self.conn.run_forever()
 
     def run(self):
         """Main method of Thread.
@@ -236,6 +238,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         self.q.put((event, data, *args))
+        print(self.q.get())
 
     def _connection_timed_out(self):
         """Issues a reconnection if the connection timed out.
@@ -322,9 +325,12 @@ class WebSocketConnection(Thread):
         """
         codes = {'20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
-        info_message = {'20051': 'Stop/Restart websocket server (please try to reconnect)',
-                        '20060': 'Refreshing data from the trading engine; please pause any acivity.',
-                        '20061': 'Done refreshing data from the trading engine. Re-subscription advised.'}
+        info_message = {'20051': 'Stop/Restart websocket server '
+                                 '(please try to reconnect)',
+                        '20060': 'Refreshing data from the trading engine; '
+                                 'please pause any acivity.',
+                        '20061': 'Done refreshing data from the trading engine.'
+                                 ' Re-subscription advised.'}
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
@@ -351,8 +357,8 @@ class WebSocketConnection(Thread):
             self.log.error(errors[data['code']])
         except KeyError:
             # Unknown error code, log it and reconnect.
-            self.log.error("Received unknown error Code in message %s! Reconnecting..", data)
-
+            self.log.error("Received unknown error Code in message %s! "
+                           "Reconnecting..", data)
 
     def _data_handler(self, data, ts):
         """Handles data messages by passing them up to the client.
