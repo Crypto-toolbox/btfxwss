@@ -137,10 +137,9 @@ class WebSocketConnection(Thread):
         :return:
         """
         self._stop_timers()
-        try:
-            raw, received_at = message, time.time(
-        except Exception:
-            raise
+
+        raw, received_at = message, time.time(
+
 
         try:
             data = json.loads(raw)
