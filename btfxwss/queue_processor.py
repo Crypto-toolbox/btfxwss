@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class QueueProcessor(Thread):
-    def __init__(self, data_q, channel_directory, log_level=None,
+    def __init__(self, data_q, log_level=None,
                  *args, **kwargs):
         super(QueueProcessor, self).__init__(*args, **kwargs)
         self.q = data_q
@@ -30,8 +30,8 @@ class QueueProcessor(Thread):
         # Assigns a channel id to a data handler method.
         self._registry = {}
 
-        # dict to translate channel ids to channel names and vice versa
-        self.channel_directory = channel_directory
+        # dict to translate channel ids to channel identifiers and vice versa
+        self.channel_directory = {}
 
         # dict to register a method with a channel id
         self.channel_handlers = {}
@@ -54,7 +54,7 @@ class QueueProcessor(Thread):
         super(QueueProcessor, self).join(timeout=timeout)
 
     def run(self):
-        while not self._stopped:
+        while not self._stopped.is_set():
             try:
                 message = self.q.get(timeout=0.1)
             except Empty:
@@ -79,6 +79,7 @@ class QueueProcessor(Thread):
             else:
                 self.log.error("Unknown dtype on queue! %s", message)
                 continue
+
 
     def _handle_subscribed(self, dtype, data, ts,):
         """

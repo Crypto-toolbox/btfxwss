@@ -105,7 +105,8 @@ class WebSocketConnection(Thread):
 
         self.conn.run_forever()
 
-        while self.reconnect_required and not self.disconnect_called:
+        while (self.reconnect_required.is_set() and
+                   not self.disconnect_called.is_set()):
             self.log.info("Attempting to connect again in %s seconds."
                              % self.reconnect_interval)
             self.state = "unavailable"
@@ -201,7 +202,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
-        self.conn.send({'event': 'ping'})
+        self.conn.send(json.dumps({'event': 'ping'}))
         self.pong_timer = Timer(self.pong_timeout, self._check_pong)
         self.pong_timer.start()
 

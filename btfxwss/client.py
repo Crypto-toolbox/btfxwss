@@ -54,37 +54,30 @@ class BtfxWss:
         # Set up book-keeping variables & configurations
         self.channel_configs = defaultdict(dict)  # Variables, as set by subscribe command
 
-        self.channel_directory = {}
-
         self.q = queue.Queue()
         self.conn = WebSocketConnection(self.q, log_level=log_level,
                                         **wss_kwargs)
-        self.queue_processor = QueueProcessor(self.q, self.channel_directory,
+        self.queue_processor = QueueProcessor(self.q,
                                               log_level=log_level)
 
     @property
-    def tickers(self):
-        return self.queue_processor.tickers
+    def channel_directory(self):
+        return self.queue_processor.channel_directory
 
-    @property
-    def books(self):
-        return self.queue_processor.books
+    def tickers(self, pair):
+        return self.queue_processor.tickers[('ticker', pair)]
 
-    @property
-    def raw_books(self):
-        return self.queue_processor.raw_books
+    def books(self, pair):
+        return self.queue_processor.books[('book', pair)]
 
-    @property
-    def trades(self):
-        return self.queue_processor.trades
+    def raw_books(self, pair):
+        return self.queue_processor.raw_books[('raw_book', pair)]
 
-    @property
-    def candles(self):
-        return self.queue_processor.candles
+    def trades(self, pair):
+        return self.queue_processor.trades[('trades', pair)]
 
-    @property
-    def account(self):
-        return self.queue_processor.account
+    def candles(self, pair, timeframe):
+        return self.queue_processor.candles[('candles', pair, timeframe)]
 
     def start(self):
         self.conn.start()
