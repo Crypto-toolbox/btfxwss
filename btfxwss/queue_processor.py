@@ -20,15 +20,12 @@ class QueueProcessor(Thread):
 
         self._response_handlers = {'unsubscribed': self._handle_unsubscribed,
                                    'subscribed': self._handle_subscribed,
-                                   'auth': self._handle_auth,
-                                   'unauth': self._handle_unauth,
                                    'conf': self._handle_conf}
         self._data_handlers = {'ticker': self._handle_ticker,
                                'book': self._handle_book,
                                'raw_book': self._handle_raw_book,
                                'candles': self._handle_candles,
-                               'trades': self._handle_trades,
-                               'auth': self._handle_auth}
+                               'trades': self._handle_trades}
 
         # Assigns a channel id to a data handler method.
         self._registry = {}
@@ -74,12 +71,15 @@ class QueueProcessor(Thread):
             elif dtype == 'data':
                 try:
                     self._data_handlers[dtype](dtype, data, ts)
+                    # Update time stamps.
+                    self.update_timestamps(data[0], ts)
                 except KeyError:
                     self.log.error("Dtype '%s' does not have a data handler!",
                                    dtype)
             else:
                 log.error("Unknown dtype on queue! %s", message)
                 continue
+
 
     def _handle_subscribed(self, dtype, data, ts,):
         """
@@ -130,10 +130,6 @@ class QueueProcessor(Thread):
         self.log.info("Configuration accepted: %s", dtype)
         return
 
-    ##
-    # Data Message Handlers
-    ##
-
     def update_timestamps(self, chan_id, ts):
         try:
             self.last_update[chan_id] = ts
@@ -155,7 +151,6 @@ class QueueProcessor(Thread):
         channel_identifier = self.channel_directory[channel_id]
         entry = (data, ts)
         self.tickers[channel_identifier].put(entry)
-        self.update_timestamps(channel_id, ts)
 
     def _handle_book(self, dtype, data, ts):
         """
@@ -170,7 +165,6 @@ class QueueProcessor(Thread):
         channel_identifier = self.channel_directory[channel_id]
         entry = (data, ts)
         self.books[channel_identifier].put(entry)
-        self.update_timestamps(channel_id, ts)
 
     def _handle_raw_book(self, dtype, data, ts):
         """
