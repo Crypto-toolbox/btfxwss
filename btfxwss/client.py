@@ -34,47 +34,6 @@ from btfxwss.exceptions import FaultyPayloadError
 log = logging.getLogger(__name__)
 
 
-class Orders:
-    def __init__(self, reverse=False):
-        self._orders = {}
-        self._reverse = reverse
-
-    def __call__(self):
-        return [self._orders[i] for i in sorted(self._orders.keys(),
-                                                  reverse=self._reverse)]
-
-    def __repr__(self):
-        return str(self.__call__())
-
-    def __setitem__(self, key, value):
-        self._orders[key] = value
-
-    def __getitem__(self, key):
-        keys = sorted(self._orders.keys(), reverse=self._reverse)
-
-        if isinstance(key, int):
-            # an index was passed
-            key, = islice(keys, key, key + 1)
-            return self._orders[key]
-        elif isinstance(key, str) or isinstance(key, float):
-            return self._orders[key]
-        elif not isinstance(key, slice):
-            raise TypeError()
-
-        return [self._orders[key] for key in
-                islice(keys, key.start, key.stop,
-                       key.step)]
-
-    def pop(self, key):
-        return self._orders.pop(key)
-
-
-class Orderbook:
-    def __init__(self):
-        self.bids = Orders(reverse=True)
-        self.asks = Orders()
-
-
 class BtfxWss:
     """
     Client Class to connect to Bitfinex Websocket API. Data is stored in attributes.
