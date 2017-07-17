@@ -8,7 +8,11 @@ Offers graceful exception handling of common server errors.
 
 Data is stored within `BtfxWss` as `Queue`s. There are convenience
 methods available to retrieve a queue for a given type. Consult
-the code for documentation.
+the code for more documentation.
+
+Please note that you must take care of handling data in the queues yourself!
+Not doing so will eventually result in `MemoryError`s, since the queues
+do not have a maximum length defined.
 
 
 # Sample Code:
@@ -48,7 +52,7 @@ Starting a session and subscribing to channels.
 
 Accessing data stored in `BtfxWss`:
 ```
-    ticker_q = wss.tickers('BTCUSD')  # returns a Queue object. 
+    ticker_q = wss.tickers('BTCUSD')  # returns a Queue object for the pair.
     while not ticker_q.empty():
         print(ticker_q.get())
 ```
