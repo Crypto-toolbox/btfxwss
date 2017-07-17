@@ -1,4 +1,7 @@
-# bitfinex_wss
+============
+bitfinex_wss
+============
+
 Client for Bitfinex Websocket API written in Python
 
 Currently supports all public endpoints; authenticated channels are a
@@ -15,11 +18,12 @@ Not doing so will eventually result in `MemoryError`s, since the queues
 do not have a maximum length defined.
 
 
-# Sample Code:
+Usage
+=====
 
 Starting a session and subscribing to channels.
 
-```
+
     from btfxwss import BtfxWss
     
     logging.basicConfig(level=logging.DEBUG, filename='test.log')
@@ -48,33 +52,31 @@ Starting a session and subscribing to channels.
     t = time.time()
     while time.time() - t < 10:
         pass
-```
+
 
 Accessing data stored in `BtfxWss`:
-```
+
     ticker_q = wss.tickers('BTCUSD')  # returns a Queue object for the pair.
     while not ticker_q.empty():
         print(ticker_q.get())
-```
+
 
 Unsubscribing from channels:
-```
+
     wss.ticker('BTCUSD', unsubscribe=True)
     wss.ticker('BTCEUR', unsubscribe=True)
-```
+
 
 Shutting down the client:
 
-```
+
     wss.stop()
-```
 
 
-## Your help is required
+
+Your help is required
+=====================
 
 If you find any bugs, error or have feature requests, please don't hesitate to open an issue. 
 Be as descriptive as possible, and I'll look into the matter as soon as I can.
 
-## Donations Welcome!
-
-BTC @ 3D4yuyf84eQUauyZLoQKyouPuThoxMMRZa
