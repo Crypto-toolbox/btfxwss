@@ -13,6 +13,14 @@ log = logging.getLogger(__name__)
 
 
 class QueueProcessor(Thread):
+    """Data Processing Thread
+
+    It handles and sorts all API messages relating to
+    subscription / subscription cancelling, and sorts all data messages into
+    queues, organized by data type (book, ticker, etc) and pairs
+    ( BTCUSD, ETHBTC, etc).
+
+    """
     def __init__(self, data_q, log_level=None,
                  *args, **kwargs):
         super(QueueProcessor, self).__init__(*args, **kwargs)

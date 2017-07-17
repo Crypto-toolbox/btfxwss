@@ -12,10 +12,10 @@ log = logging.getLogger(__name__)
 
 
 class BtfxWss:
-    """
-    Client Class to connect to Bitfinex Websocket API. Data is stored in attributes.
-    Features error handling and logging, as well as reconnection automation if
-    the Server issues a connection reset.
+    """Websocket Client Interface to Bitfinex WSS API
+
+    It features separate threads for the connection and data handling.
+    Data can be accessed using the provided methods.
     """
 
     def __init__(self, key=None, secret=None, log_level=None, **wss_kwargs):
@@ -65,8 +65,8 @@ class BtfxWss:
 
     def config(self, decimals_as_strings=True, ts_as_dates=False,
                sequencing=False, **kwargs):
-        """
-        Send configuration to websocket server
+        """Send configuration to websocket server
+
         :param decimals_as_strings: bool, turn on/off decimals as strings
         :param ts_as_dates: bool, decide to request timestamps as dates instead
         :param sequencing: bool, turn on sequencing
@@ -100,8 +100,8 @@ class BtfxWss:
         self.channel_configs.pop(identifier)
 
     def subscribe_to_ticker(self, pair, unsubscribe=False, **kwargs):
-        """
-        Subscribe to the passed pair's ticker channel.
+        """Subscribe to the passed pair's ticker channel.
+
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
@@ -113,8 +113,8 @@ class BtfxWss:
             self._subscribe('ticker', identifier, symbol=pair, **kwargs)
 
     def subscribe_to_order_book(self, pair, unsubscribe=False, **kwargs):
-        """
-        Subscribe to the passed pair's order book channel.
+        """Subscribe to the passed pair's order book channel.
+
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
@@ -126,8 +126,8 @@ class BtfxWss:
             self._subscribe('book', identifier, symbol=pair, **kwargs)
 
     def subscribe_to_raw_order_book(self, pair, prec=None, unsubscribe=False, **kwargs):
-        """
-        Subscribe to the passed pair's raw order book channel.
+        """Subscribe to the passed pair's raw order book channel.
+
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
@@ -140,8 +140,8 @@ class BtfxWss:
             self._subscribe('book', identifier, pair=pair, prec=prec, **kwargs)
 
     def subscribe_to_trades(self, pair, unsubscribe=False, **kwargs):
-        """
-        Subscribe to the passed pair's trades channel.
+        """Subscribe to the passed pair's trades channel.
+
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
@@ -153,8 +153,8 @@ class BtfxWss:
             self._subscribe('trades', identifier, symbol=pair, **kwargs)
 
     def subscribe_to_candles(self, pair, timeframe=None, unsubcribe=False, **kwargs):
-        """
-        Subscribe to the passed pair's OHLC data channel.
+        """Subscribe to the passed pair's OHLC data channel.
+
         :param pair: str, Pair to request data for.
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
                                 1D, 7D, 14D, 1M}

@@ -15,11 +15,13 @@ log = logging.getLogger(__name__)
 
 
 class WebSocketConnection(Thread):
-    """
-    Websocket Connection Thread
+    """Websocket Connection Thread
 
     Inspired heavily by ekulyk's PythonPusherClient Connection Class
     https://github.com/ekulyk/PythonPusherClient/blob/master/pusherclient/connection.py
+
+    It handles all low-level system messages, such a reconnects, pausing of
+    activity and continuing of activity.
     """
     def __init__(self, *args, url=None, timeout=None,
                  reconnect_interval=None, log_level=None, **kwargs):
@@ -93,8 +95,8 @@ class WebSocketConnection(Thread):
             self.conn.close()
 
     def _connect(self):
-        """
-        Creates a websocket connection.
+        """Creates a websocket connection.
+
         :return:
         """
         self.conn = websocket.WebSocketApp(
