@@ -61,7 +61,6 @@ class QueueProcessor(Thread):
                 continue
 
             dtype, data, ts = message
-
             if dtype in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
                 try:
                     self._response_handlers[dtype](dtype, data, ts)
@@ -70,12 +69,20 @@ class QueueProcessor(Thread):
                                    "handler!", dtype)
             elif dtype == 'data':
                 try:
-                    self._data_handlers[dtype](dtype, data, ts)
+                    channel_id = data[0]
+
+                    # Get channel type associated with this data to the
+                    # associated data type (from 'data' to
+                    # 'book', 'ticker' or similar
+                    channel_type, *_ = self.channel_directory[channel_id]
+
+                    # Run the associated data handler for this channel type.
+                    self._data_handlers[channel_type](channel_type, data, ts)
                     # Update time stamps.
-                    self.update_timestamps(data[0], ts)
+                    self.update_timestamps(channel_id, ts)
                 except KeyError:
-                    self.log.error("Dtype '%s' does not have a data handler!",
-                                   dtype)
+                    self.log.error("Channel ID does not have a data handler! %s",
+                                   message)
             else:
                 self.log.error("Unknown dtype on queue! %s", message)
                 continue
@@ -156,6 +163,7 @@ class QueueProcessor(Thread):
         self.log.debug("_handle_ticker: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         channel_identifier = self.channel_directory[channel_id]
+
         entry = (data, ts)
         self.tickers[channel_identifier].put(entry)
 
