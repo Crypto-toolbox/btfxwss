@@ -1,6 +1,6 @@
-============
-bitfinex_wss
-============
+=======
+BTFXWSS
+=======
 
 Client for Bitfinex Websocket API written in Python
 
