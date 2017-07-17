@@ -41,19 +41,39 @@ class BtfxWss:
         return self.queue_processor.channel_directory
 
     def tickers(self, pair):
-        return self.queue_processor.tickers[('ticker', pair)]
+        key = ('ticker', pair)
+        if key in self.queue_processor.tickers:
+            return self.queue_processor.tickers[key]
+        else:
+            raise KeyError(pair)
 
     def books(self, pair):
-        return self.queue_processor.books[('book', pair)]
+        key = ('book', pair)
+        if key in self.queue_processor.books:
+            return self.queue_processor.books[key]
+        else:
+            raise KeyError(pair)
 
     def raw_books(self, pair):
-        return self.queue_processor.raw_books[('raw_book', pair)]
+        key = ('raw_book', pair)
+        if key in self.queue_processor.raw_books:
+            return self.queue_processor.raw_books[key]
+        else:
+            raise KeyError(pair)
 
     def trades(self, pair):
-        return self.queue_processor.trades[('trades', pair)]
+        key = ('trades', pair)
+        if key in self.queue_processor.trades:
+            return self.queue_processor.trades[key]
+        else:
+            raise KeyError(pair)
 
     def candles(self, pair, timeframe):
-        return self.queue_processor.candles[('candles', pair, timeframe)]
+        key = ('candles', pair, timeframe)
+        if key in self.queue_processor.candles:
+            return self.queue_processor.candles[key]
+        else:
+            raise KeyError(pair)
 
     def start(self):
         self.conn.start()
