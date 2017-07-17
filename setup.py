@@ -5,4 +5,4 @@ setup(name='btfxwss', version='1.0', author='Nils Diefenbach',
       url="https://github.com/nlsdfnbch/bitfinex_wss", license='LICENCSE',
       packages=['btfxwss'], install_requires=['websocket-client'],
       description="Python 3.5+ Websocket Client for the Bitfinex WSS API.",
-      long_description=open('README.rst').read())
+      long_description=open('package_readme.rst').read())
