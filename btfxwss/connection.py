@@ -2,11 +2,11 @@
 import logging
 import json
 import time
-import websocket
 from queue import Queue
 from threading import Thread, Event, Timer
 
 # Import Third-Party
+import websocket
 
 # Import Homebrew
 
