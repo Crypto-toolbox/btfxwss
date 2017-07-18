@@ -181,7 +181,7 @@ class BtfxWss:
         :param kwargs:
         :return:
         """
-        identifier = ('candled', pair, timeframe)
+        identifier = ('candles', pair, timeframe)
         valid_tfs = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
                      '7D', '14D', '1M']
         if timeframe:
