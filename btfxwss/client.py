@@ -109,7 +109,6 @@ class BtfxWss:
         q.update(**kwargs)
         log.debug("_subscribe: %s", q)
         self.conn.send(**q)
-        self.channel_configs[identifier] = q
 
     def _unsubscribe(self, channel_name, identifier, **kwargs):
 
@@ -181,7 +180,7 @@ class BtfxWss:
         :param kwargs:
         :return:
         """
-        identifier = ('candles', pair, timeframe)
+
         valid_tfs = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
                      '7D', '14D', '1M']
         if timeframe:
@@ -189,6 +188,7 @@ class BtfxWss:
                 raise ValueError("timeframe must be any of %s" % valid_tfs)
         else:
             timeframe = '1m'
+        identifier = ('candles', pair, timeframe)
         pair = 't' + pair if not pair.startswith('t') else pair
         key = 'trade:' + timeframe + ':' + pair
         if unsubcribe:
