@@ -1,3 +1,8 @@
+# 1.0.1
+
+## Fixed
+- Fixed an issue where identifier in the queue processor's `channel_directory` attribute would store incorrect keys for candle data. 
+
 # 1.0
 
 ## Added
