@@ -126,8 +126,8 @@ class QueueProcessor(Thread):
         else:
             identifier = (channel_name, symbol)
         self.channel_handlers[channel_id] = identifier
-        self.channel_directory[(channel_name, symbol)] = channel_id
-        self.channel_directory[channel_id] = (channel_name, symbol)
+        self.channel_directory[identifier] = channel_id
+        self.channel_directory[channel_id] = identifier
         self.log.info("Subscription succesful for channel %s", identifier)
 
     def _handle_unsubscribed(self, dtype, data, ts):
