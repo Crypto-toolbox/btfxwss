@@ -44,9 +44,6 @@ Starting a session and subscribing to channels.
     wss.subscribe_to_ticker('BTCUSD')
     wss.subscribe_to_order_book('BTCUSD')
     
-    # Send a ping - if this returns silently, everything's fine.
-    wss.ping()
-    
     # Do something else
     t = time.time()
     while time.time() - t < 10:
