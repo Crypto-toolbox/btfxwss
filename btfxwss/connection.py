@@ -222,13 +222,16 @@ class WebSocketConnection(Thread):
             # reconnect
             self.reconnect()
 
-    def send(self, **kwargs):
+    def send(self, list_data=None, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
         :return:
         """
-        payload = json.dumps(kwargs)
+        if list_data:
+            payload = json.dumps(list_data)
+        else:
+            payload = json.dumps(kwargs)
         self.conn.send(payload)
 
     def pass_to_client(self, event, data, *args):
