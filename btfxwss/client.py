@@ -39,9 +39,97 @@ class BtfxWss:
         self.queue_processor = QueueProcessor(self.conn.q,
                                               log_level=log_level)
 
+    ##############
+    # Properties #
+    ##############
+
+    @property
+    def orders(self):
+        return self.queue_processor.account['Orders']
+
+    @property
+    def positions(self):
+        return self.queue_processor.account['Positions']
+
+    @property
+    def orders(self):
+        return self.queue_processor.account['Orders']
+
+    @property
+    def historical_orders(self):
+        return self.queue_processor.account['Historical Orders']
+
+    @property
+    def trades(self):
+        return self.queue_processor.account['Trades']
+
+    @property
+    def loans(self):
+        return self.queue_processor.account['Loans']
+
+    @property
+    def historical_loans(self):
+        return self.queue_processor.account['Historical Loans']
+
+    @property
+    def wallets(self):
+        return self.queue_processor.account['Wallets']
+
+    @property
+    def balance_info(self):
+        return self.queue_processor.account['Balance Info']
+
+    @property
+    def margin_info(self):
+        return self.queue_processor.account['Margin Info']
+
+    @property
+    def offers(self):
+        return self.queue_processor.account['Offers']
+
+    @property
+    def historical_offers(self):
+        return self.queue_processor.account['Historical Offers']
+
+    @property
+    def funding_info(self):
+        return self.queue_processor.account['Funding Info']
+
+    @property
+    def credits(self):
+        return self.queue_processor.account['Credits']
+
+    @property
+    def historical_credits(self):
+        return self.queue_processor.account['Historical Credits']
+
     @property
     def channel_directory(self):
         return self.queue_processor.channel_directory
+
+    @property
+    def funding_trades(self):
+        return self.queue_processor.account['Funding_trades']
+
+    @property
+    def notifications(self):
+        return self.queue_processor.account['Notifications']
+
+    ##############################################
+    # Client Initialization and Shutdown Methods #
+    ##############################################
+
+    def start(self):
+        self.conn.start()
+        self.queue_processor.start()
+
+    def stop(self):
+        self.conn.disconnect()
+        self.queue_processor.join()
+
+    ##########################
+    # Data Retrieval Methods #
+    ##########################
 
     def tickers(self, pair):
         key = ('ticker', pair)
@@ -78,13 +166,24 @@ class BtfxWss:
         else:
             raise KeyError(pair)
 
-    def start(self):
-        self.conn.start()
-        self.queue_processor.start()
+    ##########################################
+    # Subscription and Configuration Methods #
+    ##########################################
 
-    def stop(self):
-        self.conn.disconnect()
-        self.queue_processor.join()
+    def _subscribe(self, channel_name, identifier, **kwargs):
+        q = {'event': 'subscribe', 'channel': channel_name}
+        q.update(**kwargs)
+        log.debug("_subscribe: %s", q)
+        self.conn.send(**q)
+        self.channel_configs[identifier] = q
+
+    def _unsubscribe(self, channel_name, identifier, **kwargs):
+
+        channel_id = self.channel_directory[(channel_name,)]
+        q = {'event': 'unsubscribe', 'chanId': channel_id}
+        q.update(kwargs)
+        self.conn.send(**q)
+        self.channel_configs.pop(identifier)
 
     def config(self, decimals_as_strings=True, ts_as_dates=False,
                sequencing=False, **kwargs):
@@ -106,21 +205,6 @@ class BtfxWss:
         q = {'event': 'conf', 'flags': flags}
         q.update(kwargs)
         self.conn.send(**q)
-
-    def _subscribe(self, channel_name, identifier, **kwargs):
-        q = {'event': 'subscribe', 'channel': channel_name}
-        q.update(**kwargs)
-        log.debug("_subscribe: %s", q)
-        self.conn.send(**q)
-        self.channel_configs[identifier] = q
-
-    def _unsubscribe(self, channel_name, identifier, **kwargs):
-
-        channel_id = self.channel_directory[(channel_name,)]
-        q = {'event': 'unsubscribe', 'chanId': channel_id}
-        q.update(kwargs)
-        self.conn.send(**q)
-        self.channel_configs.pop(identifier)
 
     def subscribe_to_ticker(self, pair, unsubscribe=False, **kwargs):
         """Subscribe to the passed pair's ticker channel.
@@ -211,3 +295,4 @@ class BtfxWss:
         payload = {'event': 'auth', 'apiKey': self.key, 'authSig': auth_sig,
                    'authPayload': auth_string, 'authNonce': nonce}
         self.conn.send(**payload)
+
