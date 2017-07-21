@@ -109,6 +109,7 @@ class BtfxWss:
         q.update(**kwargs)
         log.debug("_subscribe: %s", q)
         self.conn.send(**q)
+        self.channel_configs[identifier] = q
 
     def _unsubscribe(self, channel_name, identifier, **kwargs):
 
