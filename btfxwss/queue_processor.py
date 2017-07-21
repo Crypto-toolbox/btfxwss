@@ -28,7 +28,9 @@ class QueueProcessor(Thread):
 
         self._response_handlers = {'unsubscribed': self._handle_unsubscribed,
                                    'subscribed': self._handle_subscribed,
-                                   'conf': self._handle_conf}
+                                   'conf': self._handle_conf,
+                                   'auth': self._handle_auth,
+                                   'unauth': self._handle_auth}
         self._data_handlers = {'ticker': self._handle_ticker,
                                'book': self._handle_book,
                                'raw_book': self._handle_raw_book,
@@ -53,9 +55,26 @@ class QueueProcessor(Thread):
         self.candles = defaultdict(Queue)
         self.account = defaultdict(Queue)
 
+        # Sentinel Event to kill the thread
         self._stopped = Event()
+
+        # Internal Logging facilities
         self.log = logging.getLogger(self.__module__)
         self.log.setLevel(level=logging.INFO if not log_level else log_level)
+
+        # Translation dict for Account channels
+        self.account_channel_names = {'os': 'Orders', 'ps': 'Positions',
+                                      'hos': 'Historical Orders',
+                                      'hts': 'Trades(snapshot)', 'fls': 'Loans',
+                                      'te': 'Trade Event', 'tu': 'Trade Update',
+                                      'ws': 'Wallets', 'bu': 'Balance Info',
+                                      'miu': 'Margin Info', 'fos': 'Offers',
+                                      'fiu': 'Funding Info',  'fcs': 'Credits',
+                                      'hfos': 'Historical Offers',
+                                      'hfcs': 'Historical Credits',
+                                      'hfls': 'Historical Loans',
+                                      'htfs': 'Funding Trades',
+                                      'n': 'Notifications'}
 
     def join(self, timeout=None):
         self._stopped.set()
@@ -146,6 +165,18 @@ class QueueProcessor(Thread):
         self.last_update.pop(channel_id)
         self.log.info("Successfully unsubscribed from %s", chan_identifier)
 
+    def _handle_auth(self, dtype, data, ts):
+        # Contains keys status, chanId, userId, caps
+        if dtype == 'unauth':
+            raise NotImplementedError
+        channel_id = data.pop('chanId')
+        user_id = data.pop('userId')
+
+        identifier = ('auth', user_id)
+        self.channel_handlers[identifier] = channel_id
+        self.channel_directory[identifier] = channel_id
+        self.channel_directory[channel_id] = identifier
+
     def _handle_conf(self, dtype, data, ts):
         self.log.debug("_handle_conf: %s - %s - %s", dtype, data, ts)
         self.log.info("Configuration accepted: %s", dtype)
@@ -158,6 +189,41 @@ class QueueProcessor(Thread):
             self.log.warning("Attempted ts update of channel %s, but channel "
                              "not present anymore.",
                              self.channel_directory[chan_id])
+
+    def _handle_account(self, dtype, data, ts):
+        """ Handles Account related data.
+
+        translation table for channel names:
+            Data Channels
+            os      -   Orders
+            hos     -   Historical Orders
+            ps      -   Positions
+            hts     -   Trades (snapshot)
+            te      -   Trade Event
+            tu      -   Trade Update
+            ws      -   Wallets
+            bu      -   Balance Info
+            miu     -   Margin Info
+            fiu     -   Funding Info
+            fos     -   Offers
+            hfos    -   Historical Offers
+            fcs     -   Credits
+            hfcs    -   Historical Credits
+            fls     -   Loans
+            hfls    -   Historical Loans
+            htfs    -   Funding Trades
+            n       -   Notifications (WIP)
+
+        :param dtype:
+        :param data:
+        :param ts:
+        :return:
+        """
+
+        chan_id, *data = data
+        channel_identifier = self.account_channel_names[data[0]]
+        entry = (data, ts)
+        self.account[channel_identifier].put(entry)
 
     def _handle_ticker(self, dtype, data, ts):
         """

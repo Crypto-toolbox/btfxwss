@@ -1,5 +1,8 @@
 # Import Built-Ins
 import logging
+import time
+import hmac
+import hashlib
 from collections import defaultdict
 
 # Import Homebrew
@@ -196,3 +199,15 @@ class BtfxWss:
             self._unsubscribe('candles', identifier, key=key, **kwargs)
         else:
             self._subscribe('candles', identifier, key=key, **kwargs)
+
+    def authenticate(self):
+        if not self.key and not self.secret:
+            raise ValueError("Must supply both key and secret key for API!")
+        nonce = str(int(time.time() * 1000))
+        auth_string = 'AUTH' + nonce
+        auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
+                            hashlib.sha384).hexdigest()
+
+        payload = {'event': 'auth', 'apiKey': self.key, 'authSig': auth_sig,
+                   'authPayload': auth_string, 'authNonce': nonce}
+        self.conn.send(**payload)
