@@ -1,3 +1,10 @@
+# 1.1.0
+
+## Added
+- Support for Authentication Channels Data Stream
+- Properties on Client class to ease access to account information
+- 
+
 # 1.0
 
 ## Added
