@@ -65,8 +65,8 @@ class QueueProcessor(Thread):
         # Translation dict for Account channels
         self.account_channel_names = {'os': 'Orders', 'ps': 'Positions',
                                       'hos': 'Historical Orders',
-                                      'hts': 'Trades(snapshot)', 'fls': 'Loans',
-                                      'te': 'Trade Event', 'tu': 'Trade Update',
+                                      'hts': 'Trades', 'fls': 'Loans',
+                                      'te': 'Trades', 'tu': 'Trades',
                                       'ws': 'Wallets', 'bu': 'Balance Info',
                                       'miu': 'Margin Info', 'fos': 'Offers',
                                       'fiu': 'Funding Info',  'fcs': 'Credits',
