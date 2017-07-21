@@ -296,3 +296,43 @@ class BtfxWss:
                    'authPayload': auth_string, 'authNonce': nonce}
         self.conn.send(**payload)
 
+    def new_order(self, **order_settings):
+        """Post a new Order va Websocket.
+
+        :param kwargs:
+        :return:
+        """
+        self._send_auth_command('on', order_settings)
+
+    def cancel_order(self, multi=False, **order_identifiers):
+        """Cancel one or multiple orders via Websocket.
+
+        :param multi: bool, whether order_settings contains settings for one, or
+                      multiples orders
+        :param order_identifiers: Identifiers for the order(s) you with to cancel
+        :return:
+        """
+        if multi:
+            self._send_auth_command('oc_multi', order_identifiers)
+        else:
+            self._send_auth_command('oc', order_identifiers)
+
+    def order_multi_op(self, *operations):
+        """Execute multiple, order-related operations via Websocket.
+
+        :param operations: operations to send to the websocket
+        :return:
+        """
+        self._send_auth_command('ox_multi', operations)
+
+    def calc(self, *calculations):
+        """Request one or several operations via Websocket.
+
+        :param calculations: calculations as strings to send to the websocket
+        :return:
+        """
+        self._send_auth_command('calc', calculations)
+
+    def _send_auth_command(self, channel_name, data):
+        payload = [0, channel_name, None, data]
+        self.conn.send(list_data=payload)
