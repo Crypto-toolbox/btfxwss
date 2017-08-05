@@ -14,6 +14,17 @@ from btfxwss.queue_processor import QueueProcessor
 log = logging.getLogger(__name__)
 
 
+def is_connected(func):
+    def wrapped(self, *args, **kwargs):
+        if self.conn and self.conn.connected.is_set():
+            return func(self, *args, **kwargs)
+        else:
+            log.error("Cannot call %s() on unestablished connection!",
+                      func.__name__)
+            return None
+    return wrapped
+
+
 class BtfxWss:
     """Websocket Client Interface to Bitfinex WSS API
 
@@ -115,6 +126,7 @@ class BtfxWss:
     def notifications(self):
         return self.queue_processor.account['Notifications']
 
+
     ##############################################
     # Client Initialization and Shutdown Methods #
     ##############################################
@@ -207,6 +219,7 @@ class BtfxWss:
         q.update(kwargs)
         self.conn.send(**q)
 
+    @is_connected
     def subscribe_to_ticker(self, pair, unsubscribe=False, **kwargs):
         """Subscribe to the passed pair's ticker channel.
 
@@ -220,6 +233,7 @@ class BtfxWss:
         else:
             self._subscribe('ticker', identifier, symbol=pair, **kwargs)
 
+    @is_connected
     def subscribe_to_order_book(self, pair, unsubscribe=False, **kwargs):
         """Subscribe to the passed pair's order book channel.
 
@@ -233,6 +247,7 @@ class BtfxWss:
         else:
             self._subscribe('book', identifier, symbol=pair, **kwargs)
 
+    @is_connected
     def subscribe_to_raw_order_book(self, pair, prec=None, unsubscribe=False, **kwargs):
         """Subscribe to the passed pair's raw order book channel.
 
@@ -247,6 +262,7 @@ class BtfxWss:
         else:
             self._subscribe('book', identifier, pair=pair, prec=prec, **kwargs)
 
+    @is_connected
     def subscribe_to_trades(self, pair, unsubscribe=False, **kwargs):
         """Subscribe to the passed pair's trades channel.
 
@@ -260,6 +276,7 @@ class BtfxWss:
         else:
             self._subscribe('trades', identifier, symbol=pair, **kwargs)
 
+    @is_connected
     def subscribe_to_candles(self, pair, timeframe=None, unsubcribe=False, **kwargs):
         """Subscribe to the passed pair's OHLC data channel.
 
@@ -285,6 +302,7 @@ class BtfxWss:
         else:
             self._subscribe('candles', identifier, key=key, **kwargs)
 
+    @is_connected
     def authenticate(self):
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
@@ -297,6 +315,7 @@ class BtfxWss:
                    'authPayload': auth_string, 'authNonce': nonce}
         self.conn.send(**payload)
 
+    @is_connected
     def new_order(self, **order_settings):
         """Post a new Order va Websocket.
 
@@ -305,6 +324,7 @@ class BtfxWss:
         """
         self._send_auth_command('on', order_settings)
 
+    @is_connected
     def cancel_order(self, multi=False, **order_identifiers):
         """Cancel one or multiple orders via Websocket.
 
@@ -318,6 +338,7 @@ class BtfxWss:
         else:
             self._send_auth_command('oc', order_identifiers)
 
+    @is_connected
     def order_multi_op(self, *operations):
         """Execute multiple, order-related operations via Websocket.
 
@@ -326,6 +347,7 @@ class BtfxWss:
         """
         self._send_auth_command('ox_multi', operations)
 
+    @is_connected
     def calc(self, *calculations):
         """Request one or several operations via Websocket.
 

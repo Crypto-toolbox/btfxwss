@@ -45,6 +45,7 @@ class WebSocketConnection(Thread):
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
 
         # Connection Handling Attributes
+        self.connected = Event()
         self.disconnect_called = Event()
         self.reconnect_required = Event()
         self.reconnect_interval = reconnect_interval if reconnect_interval else 10
@@ -90,6 +91,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Reconnect attempt at self.reconnect_interval
+        self.connected.clear()
         self.reconnect_required.set()
         if self.conn:
             self.conn.close()
@@ -160,16 +162,19 @@ class WebSocketConnection(Thread):
 
     def _on_close(self, ws, *args):
         self.log.info("Connection closed")
+        self.connected.clear()
         self._stop_timers()
 
     def _on_open(self, ws):
         self.log.info("Connection opened")
+        self.connected.set()
         self.send_ping()
         self._start_timers()
 
     def _on_error(self, ws, error):
         self.log.info("Connection Error - %s", error)
         self.reconnect_required.set()
+        self.connected.clear()
 
     def _stop_timers(self):
         """Stops ping, pong and connection timers.
