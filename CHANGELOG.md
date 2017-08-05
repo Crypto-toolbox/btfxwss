@@ -4,6 +4,12 @@
 - Support for Authentication Channels Data Stream
 - Properties on Client class to ease access to account information
 
+## Fixed
+- Issue where Error codes would cause a reconnect when not necessary
+- Added Tests to verify basic functionality
+- Added is_connected decorator to prevent crashing of program upon trying
+to call a client method before the connection was established
+
 # 1.0.2
 
 ## Fixed
