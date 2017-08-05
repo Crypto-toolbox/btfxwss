@@ -124,7 +124,7 @@ class WebSocketConnection(Thread):
                 # We need to set this flag since closing the socket will
                 # set it to False
                 self.conn.keep_running = True
-                self.conn.run_forever()
+                self.conn.run_forever(sslopt=sslopt_ca_certs)
 
     def run(self):
         """Main method of Thread.
