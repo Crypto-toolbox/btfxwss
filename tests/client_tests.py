@@ -6,11 +6,13 @@ from queue import Empty
 from btfxwss import BtfxWss
 from websocket import WebSocketConnectionClosedException
 
+logging.basicConfig(filename='test.log', level=logging.DEBUG)
+log = logging.getLogger(__name__)
 
 
 class BtfxWssTests(TestCase):
 
-    def test_subscribing_to_ticker_data_works(self):
+    def test_subscribing_to_data_works(self):
         wss = BtfxWss()
         wss.start()
         time.sleep(1)
