@@ -354,13 +354,13 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        errors = {'10000': 'Unknown event',
-                  '10001': 'Unknown pair',
-                  '10300': 'Subscription Failed (generic)',
-                  '10301': 'Already Subscribed',
-                  '10302': 'Unknown channel',
-                  '10400': 'Subscription Failed (generic)',
-                  '10401': 'Not subscribed',
+        errors = {10000: 'Unknown event',
+                  10001: 'Unknown pair',
+                  10300: 'Subscription Failed (generic)',
+                  10301: 'Already Subscribed',
+                  10302: 'Unknown channel',
+                  10400: 'Subscription Failed (generic)',
+                  10401: 'Not subscribed',
                   }
         try:
             self.log.error(errors[data['code']])
