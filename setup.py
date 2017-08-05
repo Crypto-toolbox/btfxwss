@@ -89,7 +89,7 @@ for the connection class. And finally, a big thanks to all the people submitting
 issues, discussing solutions and simply starring the project - you all help me
 stay excited and motivated for this project! Cheers to you."""
 
-setup(name='btfxwss', version='1.0.1', author='Nils Diefenbach',
+setup(name='btfxwss', version='1.0.2', author='Nils Diefenbach',
       author_email='23okrs20+pypi@mykolab.com',
       url="https://github.com/nlsdfnbch/bitfinex_wss", license='LICENCSE',
       packages=['btfxwss'], install_requires=['websocket-client'],
