@@ -101,6 +101,8 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+
+
         self.conn = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
@@ -109,7 +111,8 @@ class WebSocketConnection(Thread):
             on_close=self._on_close
         )
 
-        self.conn.run_forever()
+        sslopt_ca_certs = {'ca_certs': 'websocket/cacert.pem'}
+        self.conn.run_forever(sslopt=sslopt_ca_certs)
 
         while self.reconnect_required.is_set():
             if not self.disconnect_called.is_set():

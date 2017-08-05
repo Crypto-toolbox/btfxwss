@@ -13,7 +13,8 @@ to call a client method before the connection was established
 # 1.0.2
 
 ## Fixed
-- Fixed an issue where identifier in the queue processor's `channel_directory` attribute would store incorrect keys for candle data.
+- Fixed an issue where identifier in the queue processor's `channel_directory` attribute would store incorrect keys for candle data. 
+- Fixed issue #18
 
 # 1.0
 
