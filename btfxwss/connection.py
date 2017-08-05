@@ -2,6 +2,7 @@
 import logging
 import json
 import time
+import ssl
 from queue import Queue
 from threading import Thread, Event, Timer
 
@@ -102,7 +103,6 @@ class WebSocketConnection(Thread):
         :return:
         """
 
-
         self.conn = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
@@ -111,7 +111,7 @@ class WebSocketConnection(Thread):
             on_close=self._on_close
         )
 
-        sslopt_ca_certs = {'ca_certs': 'websocket/cacert.pem'}
+        sslopt_ca_certs = {'ca_certs': ssl.get_default_verify_paths()}
         self.conn.run_forever(sslopt=sslopt_ca_certs)
 
         while self.reconnect_required.is_set():
