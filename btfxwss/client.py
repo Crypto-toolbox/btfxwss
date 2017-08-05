@@ -159,7 +159,8 @@ class BtfxWss:
         else:
             raise KeyError(pair)
 
-    def candles(self, pair, timeframe):
+    def candles(self, pair, timeframe=None):
+        timeframe = '1m' if not timeframe else timeframe
         key = ('candles', pair, timeframe)
         if key in self.queue_processor.candles:
             return self.queue_processor.candles[key]
