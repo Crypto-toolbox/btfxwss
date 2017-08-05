@@ -111,7 +111,8 @@ class WebSocketConnection(Thread):
             on_close=self._on_close
         )
 
-        sslopt_ca_certs = {'ca_certs': ssl.get_default_verify_paths()}
+        ssl_defaults = ssl.get_default_verify_paths()
+        sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
         self.conn.run_forever(sslopt=sslopt_ca_certs)
 
         while self.reconnect_required.is_set():
