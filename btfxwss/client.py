@@ -429,7 +429,7 @@ class BtfxWss:
         identifier = ('candles', pair, timeframe)
         pair = 't' + pair if not pair.startswith('t') else pair
         key = 'trade:' + timeframe + ':' + pair
-        self._unsubscribe('candles', identifier, key=key, **kwargs)
+        self._subscribe('candles', identifier, key=key, **kwargs)
 
     @is_connected
     def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
