@@ -43,7 +43,7 @@ class BtfxWss:
         self.secret = secret if secret else ''
 
         # Set up book-keeping variables & configurations
-        self.channel_configs = defaultdict(dict)  # Variables, as set by subscribe command
+        self.channel_configs = defaultdict(dict)
 
         self.conn = WebSocketConnection(log_level=log_level,
                                         **wss_kwargs)
@@ -56,74 +56,139 @@ class BtfxWss:
 
     @property
     def orders(self):
+        """Return queue containing open orders associated with the user account.
+        
+        :return: Queue()
+        """
         return self.queue_processor.account['Orders']
 
     @property
     def positions(self):
+        """Return queue containing open positions associated with the user 
+        account.
+        
+        :return: Queue()
+        """
         return self.queue_processor.account['Positions']
 
     @property
-    def orders(self):
-        return self.queue_processor.account['Orders']
-
-    @property
     def historical_orders(self):
+        """Return history of orders associated with the user account.
+        
+        :return: Queue()
+        """
         return self.queue_processor.account['Historical Orders']
 
     @property
-    def trades(self):
+    def transactions(self):
+        """Return history of trades associacted with the user account.
+        
+        :return: Queue()
+        """
         return self.queue_processor.account['Trades']
 
     @property
     def loans(self):
+        """Return current loans associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Loans']
 
     @property
     def historical_loans(self):
+        """Return history of loans associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Historical Loans']
 
     @property
     def wallets(self):
+        """Return wallet balances associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Wallets']
 
     @property
     def balance_info(self):
+        """Return balance information associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Balance Info']
 
     @property
     def margin_info(self):
+        """Return margin information associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Margin Info']
 
     @property
     def offers(self):
+        """Return current offers associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Offers']
 
     @property
     def historical_offers(self):
+        """Return history of offers associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Historical Offers']
 
     @property
     def funding_info(self):
+        """Return funding information associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Funding Info']
 
     @property
     def credits(self):
+        """Return current credits associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Credits']
 
     @property
     def historical_credits(self):
+        """Return history of credits associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Historical Credits']
 
     @property
     def channel_directory(self):
+        """Return channel directory of currently subscribed channels.
+
+        :return: Queue()
+        """
         return self.queue_processor.channel_directory
 
     @property
     def funding_trades(self):
+        """Return funding trades associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Funding_trades']
 
     @property
     def notifications(self):
+        """Return notifications associacted with the user account.
+
+        :return: Queue()
+        """
         return self.queue_processor.account['Notifications']
 
     ##############################################
@@ -131,10 +196,18 @@ class BtfxWss:
     ##############################################
 
     def start(self):
+        """Start the client.
+        
+        :return: 
+        """
         self.conn.start()
         self.queue_processor.start()
 
     def stop(self):
+        """Stop the client.
+        
+        :return: 
+        """
         self.conn.disconnect()
         self.queue_processor.join()
 
@@ -143,6 +216,11 @@ class BtfxWss:
     ##########################
 
     def tickers(self, pair):
+        """Return a queue containing all received ticker data.
+        
+        :param pair: 
+        :return: Queue()
+        """
         key = ('ticker', pair)
         if key in self.queue_processor.tickers:
             return self.queue_processor.tickers[key]
@@ -150,6 +228,11 @@ class BtfxWss:
             raise KeyError(pair)
 
     def books(self, pair):
+        """Return a queue containing all received book data.
+
+        :param pair: 
+        :return: Queue()
+        """
         key = ('book', pair)
         if key in self.queue_processor.books:
             return self.queue_processor.books[key]
@@ -157,6 +240,11 @@ class BtfxWss:
             raise KeyError(pair)
 
     def raw_books(self, pair):
+        """Return a queue containing all received raw book data.
+
+        :param pair: 
+        :return: Queue()
+        """
         key = ('raw_book', pair)
         if key in self.queue_processor.raw_books:
             return self.queue_processor.raw_books[key]
@@ -164,6 +252,11 @@ class BtfxWss:
             raise KeyError(pair)
 
     def trades(self, pair):
+        """Return a queue containing all received trades data.
+
+        :param pair: 
+        :return: Queue()
+        """
         key = ('trades', pair)
         if key in self.queue_processor.trades:
             return self.queue_processor.trades[key]
@@ -171,6 +264,11 @@ class BtfxWss:
             raise KeyError(pair)
 
     def candles(self, pair, timeframe=None):
+        """Return a queue containing all received candles data.
+
+        :param pair: 
+        :return: Queue()
+        """
         timeframe = '1m' if not timeframe else timeframe
         key = ('candles', pair, timeframe)
         if key in self.queue_processor.candles:
@@ -359,6 +457,10 @@ class BtfxWss:
 
     @is_connected
     def authenticate(self):
+        """Authenticate with the Bitfinex API.
+        
+        :return: 
+        """
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
         nonce = str(int(time.time() * 1000))
