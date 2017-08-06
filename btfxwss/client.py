@@ -289,7 +289,7 @@ class BtfxWss:
 
     def _unsubscribe(self, channel_name, identifier, **kwargs):
 
-        channel_id = self.channel_directory[(channel_name,)]
+        channel_id = self.channel_directory[identifier]
         q = {'event': 'unsubscribe', 'chanId': channel_id}
         q.update(kwargs)
         self.conn.send(**q)
