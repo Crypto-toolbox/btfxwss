@@ -126,7 +126,6 @@ class BtfxWss:
     def notifications(self):
         return self.queue_processor.account['Notifications']
 
-
     ##############################################
     # Client Initialization and Shutdown Methods #
     ##############################################
@@ -220,7 +219,7 @@ class BtfxWss:
         self.conn.send(**q)
 
     @is_connected
-    def subscribe_to_ticker(self, pair, unsubscribe=False, **kwargs):
+    def subscribe_to_ticker(self, pair, **kwargs):
         """Subscribe to the passed pair's ticker channel.
 
         :param pair: str, Pair to request data for.
@@ -228,13 +227,21 @@ class BtfxWss:
         :return:
         """
         identifier = ('ticker', pair)
-        if unsubscribe:
-            self._unsubscribe('ticker', identifier, symbol=pair, **kwargs)
-        else:
-            self._subscribe('ticker', identifier, symbol=pair, **kwargs)
+        self._subscribe('ticker', identifier, symbol=pair, **kwargs)
 
     @is_connected
-    def subscribe_to_order_book(self, pair, unsubscribe=False, **kwargs):
+    def unsubscribe_from_ticker(self, pair, **kwargs):
+        """Unsubscribe to the passed pair's ticker channel.
+
+        :param pair: str, Pair to request data for.
+        :param kwargs:
+        :return:
+        """
+        identifier = ('ticker', pair)
+        self._unsubscribe('ticker', identifier, symbol=pair, **kwargs)
+
+    @is_connected
+    def subscribe_to_order_book(self, pair, **kwargs):
         """Subscribe to the passed pair's order book channel.
 
         :param pair: str, Pair to request data for.
@@ -242,28 +249,47 @@ class BtfxWss:
         :return:
         """
         identifier = ('book', pair)
-        if unsubscribe:
-            self._unsubscribe('book', identifier, symbol=pair, **kwargs)
-        else:
-            self._subscribe('book', identifier, symbol=pair, **kwargs)
+        self._subscribe('book', identifier, symbol=pair, **kwargs)
 
     @is_connected
-    def subscribe_to_raw_order_book(self, pair, prec=None, unsubscribe=False, **kwargs):
-        """Subscribe to the passed pair's raw order book channel.
+    def unsubscribe_from_order_book(self, pair, **kwargs):
+        """Unsubscribe to the passed pair's order book channel.
 
         :param pair: str, Pair to request data for.
         :param kwargs:
         :return:
         """
-        identifier = ('raw_book', pair)
-        prec = 'R0' if prec is None else prec
-        if unsubscribe:
-            self._unsubscribe('book', identifier, pair=pair, prec=prec, **kwargs)
-        else:
-            self._subscribe('book', identifier, pair=pair, prec=prec, **kwargs)
+        identifier = ('book', pair)
+        self._unsubscribe('book', identifier, symbol=pair, **kwargs)
 
     @is_connected
-    def subscribe_to_trades(self, pair, unsubscribe=False, **kwargs):
+    def subscribe_to_raw_order_book(self, pair, prec=None, **kwargs):
+        """Subscribe to the passed pair's raw order book channel.
+
+        :param pair: str, Pair to request data for.
+        :param prec: 
+        :param kwargs:
+        :return:
+        """
+        identifier = ('raw_book', pair)
+        prec = 'R0' if prec is None else prec
+        self._subscribe('book', identifier, pair=pair, prec=prec, **kwargs)
+
+    @is_connected
+    def unsubscribe_from_raw_order_book(self, pair, prec=None, **kwargs):
+        """Unsubscribe to the passed pair's raw order book channel.
+
+        :param pair: str, Pair to request data for.
+        :param prec: 
+        :param kwargs:
+        :return:
+        """
+        identifier = ('raw_book', pair)
+        prec = 'R0' if prec is None else prec
+        self._unsubscribe('book', identifier, pair=pair, prec=prec, **kwargs)
+
+    @is_connected
+    def subscribe_to_trades(self, pair, **kwargs):
         """Subscribe to the passed pair's trades channel.
 
         :param pair: str, Pair to request data for.
@@ -271,13 +297,21 @@ class BtfxWss:
         :return:
         """
         identifier = ('trades', pair)
-        if unsubscribe:
-            self._unsubscribe('trades', identifier, symbol=pair, **kwargs)
-        else:
-            self._subscribe('trades', identifier, symbol=pair, **kwargs)
+        self._subscribe('trades', identifier, symbol=pair, **kwargs)
 
     @is_connected
-    def subscribe_to_candles(self, pair, timeframe=None, unsubcribe=False, **kwargs):
+    def unsubscribe_from_trades(self, pair, **kwargs):
+        """Unsubscribe to the passed pair's trades channel.
+
+        :param pair: str, Pair to request data for.
+        :param kwargs:
+        :return:
+        """
+        identifier = ('trades', pair)
+        self._unsubscribe('trades', identifier, symbol=pair, **kwargs)
+
+    @is_connected
+    def subscribe_to_candles(self, pair, timeframe=None, **kwargs):
         """Subscribe to the passed pair's OHLC data channel.
 
         :param pair: str, Pair to request data for.
@@ -297,10 +331,31 @@ class BtfxWss:
         identifier = ('candles', pair, timeframe)
         pair = 't' + pair if not pair.startswith('t') else pair
         key = 'trade:' + timeframe + ':' + pair
-        if unsubcribe:
-            self._unsubscribe('candles', identifier, key=key, **kwargs)
+        self._unsubscribe('candles', identifier, key=key, **kwargs)
+
+    @is_connected
+    def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
+        """Unsubscribe to the passed pair's OHLC data channel.
+
+        :param pair: str, Pair to request data for.
+        :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
+                                1D, 7D, 14D, 1M}
+        :param kwargs:
+        :return:
+        """
+
+        valid_tfs = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
+                     '7D', '14D', '1M']
+        if timeframe:
+            if timeframe not in valid_tfs:
+                raise ValueError("timeframe must be any of %s" % valid_tfs)
         else:
-            self._subscribe('candles', identifier, key=key, **kwargs)
+            timeframe = '1m'
+        identifier = ('candles', pair, timeframe)
+        pair = 't' + pair if not pair.startswith('t') else pair
+        key = 'trade:' + timeframe + ':' + pair
+
+        self._unsubscribe('candles', identifier, key=key, **kwargs)
 
     @is_connected
     def authenticate(self):
