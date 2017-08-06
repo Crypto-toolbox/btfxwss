@@ -2,6 +2,7 @@
 import logging
 import json
 import time
+import ssl
 from queue import Queue
 from threading import Thread, Event, Timer
 
@@ -45,6 +46,7 @@ class WebSocketConnection(Thread):
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
 
         # Connection Handling Attributes
+        self.connected = Event()
         self.disconnect_called = Event()
         self.reconnect_required = Event()
         self.reconnect_interval = reconnect_interval if reconnect_interval else 10
@@ -90,6 +92,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Reconnect attempt at self.reconnect_interval
+        self.connected.clear()
         self.reconnect_required.set()
         if self.conn:
             self.conn.close()
@@ -100,7 +103,6 @@ class WebSocketConnection(Thread):
         :return:
         """
 
-
         self.conn = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
@@ -109,7 +111,8 @@ class WebSocketConnection(Thread):
             on_close=self._on_close
         )
 
-        sslopt_ca_certs = {'ca_certs': 'websocket/cacert.pem'}
+        ssl_defaults = ssl.get_default_verify_paths()
+        sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
         self.conn.run_forever(sslopt=sslopt_ca_certs)
 
         while self.reconnect_required.is_set():
@@ -122,7 +125,7 @@ class WebSocketConnection(Thread):
                 # We need to set this flag since closing the socket will
                 # set it to False
                 self.conn.keep_running = True
-                self.conn.run_forever()
+                self.conn.run_forever(sslopt=sslopt_ca_certs)
 
     def run(self):
         """Main method of Thread.
@@ -163,16 +166,19 @@ class WebSocketConnection(Thread):
 
     def _on_close(self, ws, *args):
         self.log.info("Connection closed")
+        self.connected.clear()
         self._stop_timers()
 
     def _on_open(self, ws):
         self.log.info("Connection opened")
+        self.connected.set()
         self.send_ping()
         self._start_timers()
 
     def _on_error(self, ws, error):
         self.log.info("Connection Error - %s", error)
         self.reconnect_required.set()
+        self.connected.clear()
 
     def _stop_timers(self):
         """Stops ping, pong and connection timers.
@@ -225,13 +231,16 @@ class WebSocketConnection(Thread):
             # reconnect
             self.reconnect()
 
-    def send(self, **kwargs):
+    def send(self, list_data=None, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
         :return:
         """
-        payload = json.dumps(kwargs)
+        if list_data:
+            payload = json.dumps(list_data)
+        else:
+            payload = json.dumps(kwargs)
         self.conn.send(payload)
 
     def pass_to_client(self, event, data, *args):
@@ -349,13 +358,13 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        errors = {'10000': 'Unknown event',
-                  '10001': 'Unknown pair',
-                  '10300': 'Subscription Failed (generic)',
-                  '10301': 'Already Subscribed',
-                  '10302': 'Unknown channel',
-                  '10400': 'Subscription Failed (generic)',
-                  '10401': 'Not subscribed',
+        errors = {10000: 'Unknown event',
+                  10001: 'Unknown pair',
+                  10300: 'Subscription Failed (generic)',
+                  10301: 'Already Subscribed',
+                  10302: 'Unknown channel',
+                  10400: 'Subscription Failed (generic)',
+                  10401: 'Not subscribed',
                   }
         try:
             self.log.error(errors[data['code']])

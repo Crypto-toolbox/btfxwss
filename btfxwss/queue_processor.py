@@ -23,12 +23,21 @@ class QueueProcessor(Thread):
     """
     def __init__(self, data_q, log_level=None,
                  *args, **kwargs):
+        """Initialze a QueueProcessor instance.
+        
+        :param data_q: Queue()
+        :param log_level: logging level
+        :param args: Thread *args
+        :param kwargs: Thread **kwargs
+        """
         super(QueueProcessor, self).__init__(*args, **kwargs)
         self.q = data_q
 
         self._response_handlers = {'unsubscribed': self._handle_unsubscribed,
                                    'subscribed': self._handle_subscribed,
-                                   'conf': self._handle_conf}
+                                   'conf': self._handle_conf,
+                                   'auth': self._handle_auth,
+                                   'unauth': self._handle_auth}
         self._data_handlers = {'ticker': self._handle_ticker,
                                'book': self._handle_book,
                                'raw_book': self._handle_raw_book,
@@ -53,15 +62,41 @@ class QueueProcessor(Thread):
         self.candles = defaultdict(Queue)
         self.account = defaultdict(Queue)
 
+        # Sentinel Event to kill the thread
         self._stopped = Event()
+
+        # Internal Logging facilities
         self.log = logging.getLogger(self.__module__)
         self.log.setLevel(level=logging.INFO if not log_level else log_level)
 
+        # Translation dict for Account channels
+        self.account_channel_names = {'os': 'Orders', 'ps': 'Positions',
+                                      'hos': 'Historical Orders',
+                                      'hts': 'Trades', 'fls': 'Loans',
+                                      'te': 'Trades', 'tu': 'Trades',
+                                      'ws': 'Wallets', 'bu': 'Balance Info',
+                                      'miu': 'Margin Info', 'fos': 'Offers',
+                                      'fiu': 'Funding Info',  'fcs': 'Credits',
+                                      'hfos': 'Historical Offers',
+                                      'hfcs': 'Historical Credits',
+                                      'hfls': 'Historical Loans',
+                                      'htfs': 'Funding Trades',
+                                      'n': 'Notifications'}
+
     def join(self, timeout=None):
+        """Set sentinel for run() method and join thread.
+        
+        :param timeout: 
+        :return: 
+        """
         self._stopped.set()
         super(QueueProcessor, self).join(timeout=timeout)
 
     def run(self):
+        """Main routine.
+        
+        :return: 
+        """
         while not self._stopped.is_set():
             try:
                 message = self.q.get(timeout=0.1)
@@ -96,11 +131,14 @@ class QueueProcessor(Thread):
                 continue
 
     def _handle_subscribed(self, dtype, data, ts,):
-        """
-        Handles responses to subscribe() commands - registers a channel id with
-        the client and assigns a data handler to it.
-        :param chanId: int, represent channel id as assigned by server
-        :param channel: str, represents channel name
+        """Handles responses to subscribe() commands 
+        
+        Registers a channel id with the client and assigns a data handler to it.
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_subscribed: %s - %s - %s", dtype, data, ts)
         channel_name = data.pop('channel')
@@ -131,10 +169,14 @@ class QueueProcessor(Thread):
         self.log.info("Subscription succesful for channel %s", identifier)
 
     def _handle_unsubscribed(self, dtype, data, ts):
-        """
-        Handles responses to unsubscribe() commands - removes a channel id from
-        the client.
-        :param chanId: int, represent channel id as assigned by server
+        """Handles responses to unsubscribe() commands
+        
+        Removes a channel id from the client.
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_unsubscribed: %s - %s - %s", dtype, data, ts)
         channel_id = data.pop('chanId')
@@ -146,12 +188,44 @@ class QueueProcessor(Thread):
         self.last_update.pop(channel_id)
         self.log.info("Successfully unsubscribed from %s", chan_identifier)
 
+    def _handle_auth(self, dtype, data, ts):
+        """Handles authentication responses
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
+        """
+        # Contains keys status, chanId, userId, caps
+        if dtype == 'unauth':
+            raise NotImplementedError
+        channel_id = data.pop('chanId')
+        user_id = data.pop('userId')
+
+        identifier = ('auth', user_id)
+        self.channel_handlers[identifier] = channel_id
+        self.channel_directory[identifier] = channel_id
+        self.channel_directory[channel_id] = identifier
+
     def _handle_conf(self, dtype, data, ts):
+        """Handles configuration messages.
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
+        """
         self.log.debug("_handle_conf: %s - %s - %s", dtype, data, ts)
         self.log.info("Configuration accepted: %s", dtype)
         return
 
     def update_timestamps(self, chan_id, ts):
+        """Updates the timestamp for the given channel id.
+        
+        :param chan_id: 
+        :param ts: 
+        :return: 
+        """
         try:
             self.last_update[chan_id] = ts
         except KeyError:
@@ -159,14 +233,49 @@ class QueueProcessor(Thread):
                              "not present anymore.",
                              self.channel_directory[chan_id])
 
-    def _handle_ticker(self, dtype, data, ts):
-        """
-        Adds received ticker data to self.tickers dict, filed under its channel
-        id.
-        :param ts: timestamp, declares when data was received by the client
-        :param chan_id: int, channel id
-        :param data: tuple or list of data received via wss
+    def _handle_account(self, dtype, data, ts):
+        """ Handles Account related data.
+
+        translation table for channel names:
+            Data Channels
+            os      -   Orders
+            hos     -   Historical Orders
+            ps      -   Positions
+            hts     -   Trades (snapshot)
+            te      -   Trade Event
+            tu      -   Trade Update
+            ws      -   Wallets
+            bu      -   Balance Info
+            miu     -   Margin Info
+            fiu     -   Funding Info
+            fos     -   Offers
+            hfos    -   Historical Offers
+            fcs     -   Credits
+            hfcs    -   Historical Credits
+            fls     -   Loans
+            hfls    -   Historical Loans
+            htfs    -   Funding Trades
+            n       -   Notifications (WIP)
+
+        :param dtype:
+        :param data:
+        :param ts:
         :return:
+        """
+
+        chan_id, *data = data
+        channel_identifier = self.account_channel_names[data[0]]
+        entry = (data, ts)
+        self.account[channel_identifier].put(entry)
+
+    def _handle_ticker(self, dtype, data, ts):
+        """Adds received ticker data to self.tickers dict, filed under its channel
+        id.
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_ticker: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
@@ -176,12 +285,12 @@ class QueueProcessor(Thread):
         self.tickers[channel_identifier].put(entry)
 
     def _handle_book(self, dtype, data, ts):
-        """
-        Updates the order book stored in self.books[chan_id]
-        :param ts: timestamp, declares when data was received by the client
-        :param chan_id: int, channel id
-        :param data: dict, tuple or list of data received via wss
-        :return:
+        """Updates the order book stored in self.books[chan_id]
+                
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_book: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
@@ -191,12 +300,12 @@ class QueueProcessor(Thread):
         self.books[channel_identifier].put(entry)
 
     def _handle_raw_book(self, dtype, data, ts):
-        """
-        Updates the raw order books stored in self.raw_books[chan_id]
-        :param ts: timestamp, declares when data was received by the client
-        :param chan_id: int, channel id
-        :param data: dict, tuple or list of data received via wss
-        :return:
+        """Updates the raw order books stored in self.raw_books[chan_id]
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_raw_book: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
@@ -205,12 +314,12 @@ class QueueProcessor(Thread):
         self.raw_books[channel_identifier].put(entry)
 
     def _handle_trades(self, dtype, data, ts):
-        """
-        Files trades in self._trades[chan_id]
-        :param ts: timestamp, declares when data was received by the client
-        :param chan_id: int, channel id
-        :param data: list of data received via wss
-        :return:
+        """Files trades in self._trades[chan_id]
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_trades: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
@@ -219,12 +328,12 @@ class QueueProcessor(Thread):
         self.trades[channel_identifier].put(entry)
 
     def _handle_candles(self, dtype, data, ts):
-        """
-        Stores OHLC data received via wss in self.candles[chan_id]
-        :param ts: timestamp, declares when data was received by the client
-        :param chan_id: int, channel id
-        :param data: list of data received via wss
-        :return:
+        """Stores OHLC data received via wss in self.candles[chan_id]
+        
+        :param dtype: 
+        :param data: 
+        :param ts: 
+        :return: 
         """
         self.log.debug("_handle_candles: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data

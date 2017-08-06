@@ -16,11 +16,16 @@ Please note that you must take care of handling data in the queues yourself!
 Not doing so will eventually result in `MemoryError`s, since the queues
 do not have a maximum length defined.
 
+Installation
+============
+
+Via pip:
+```
+pip install btfxwss
+```
 
 Usage
 =====
-
-Starting a session and subscribing to channels.
 
 ```
     from btfxwss import BtfxWss
@@ -43,29 +48,22 @@ Starting a session and subscribing to channels.
     # Subscribe to some channels
     wss.subscribe_to_ticker('BTCUSD')
     wss.subscribe_to_order_book('BTCUSD')
-    
+
     # Do something else
     t = time.time()
     while time.time() - t < 10:
         pass
-```
 
-Accessing data stored in BtfxWss:
-```
+    # Accessing data stored in BtfxWss:
     ticker_q = wss.tickers('BTCUSD')  # returns a Queue object for the pair.
     while not ticker_q.empty():
         print(ticker_q.get())
-```
 
-Unsubscribing from channels:
-```
-    wss.ticker('BTCUSD', unsubscribe=True)
-    wss.ticker('BTCEUR', unsubscribe=True)
-```
+    # Unsubscribing from channels:
+    wss.unsubscribe_from_ticker('BTCUSD')
+    wss.unsubscribe_from_order_book('BTCUSD')
 
-Shutting down the client:
-
-```
+    # Shutting down the client:
     wss.stop()
 ```
 
