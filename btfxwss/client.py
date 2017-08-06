@@ -266,7 +266,8 @@ class BtfxWss:
     def candles(self, pair, timeframe=None):
         """Return a queue containing all received candles data.
 
-        :param pair: 
+        :param pair: str, Symbol pair to request data for
+        :param timeframe: str
         :return: Queue()
         """
         timeframe = '1m' if not timeframe else timeframe
@@ -320,7 +321,7 @@ class BtfxWss:
     def subscribe_to_ticker(self, pair, **kwargs):
         """Subscribe to the passed pair's ticker channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param kwargs:
         :return:
         """
@@ -331,7 +332,7 @@ class BtfxWss:
     def unsubscribe_from_ticker(self, pair, **kwargs):
         """Unsubscribe to the passed pair's ticker channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param kwargs:
         :return:
         """
@@ -342,7 +343,7 @@ class BtfxWss:
     def subscribe_to_order_book(self, pair, **kwargs):
         """Subscribe to the passed pair's order book channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param kwargs:
         :return:
         """
@@ -353,7 +354,7 @@ class BtfxWss:
     def unsubscribe_from_order_book(self, pair, **kwargs):
         """Unsubscribe to the passed pair's order book channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param kwargs:
         :return:
         """
@@ -364,7 +365,7 @@ class BtfxWss:
     def subscribe_to_raw_order_book(self, pair, prec=None, **kwargs):
         """Subscribe to the passed pair's raw order book channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param prec: 
         :param kwargs:
         :return:
@@ -377,7 +378,7 @@ class BtfxWss:
     def unsubscribe_from_raw_order_book(self, pair, prec=None, **kwargs):
         """Unsubscribe to the passed pair's raw order book channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param prec: 
         :param kwargs:
         :return:
@@ -390,7 +391,7 @@ class BtfxWss:
     def subscribe_to_trades(self, pair, **kwargs):
         """Subscribe to the passed pair's trades channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param kwargs:
         :return:
         """
@@ -401,7 +402,7 @@ class BtfxWss:
     def unsubscribe_from_trades(self, pair, **kwargs):
         """Unsubscribe to the passed pair's trades channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param kwargs:
         :return:
         """
@@ -412,7 +413,7 @@ class BtfxWss:
     def subscribe_to_candles(self, pair, timeframe=None, **kwargs):
         """Subscribe to the passed pair's OHLC data channel.
 
-        :param pair: str, Pair to request data for.
+        :param pair: str, Symbol pair to request data for
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
                                 1D, 7D, 14D, 1M}
         :param kwargs:
@@ -435,7 +436,7 @@ class BtfxWss:
     def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
         """Unsubscribe to the passed pair's OHLC data channel.
 
-        :param pair: str, Pair to request data for.
+        v
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
                                 1D, 7D, 14D, 1M}
         :param kwargs:
