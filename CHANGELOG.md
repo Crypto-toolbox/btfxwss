@@ -9,6 +9,7 @@
 - Added Tests to verify basic functionality
 - Added is_connected decorator to prevent crashing of program upon trying
 to call a client method before the connection was established
+- fixed `channel_id queried` via `channel_name`, instead of identifier in `Client._unsubscribe()`
 
 # 1.0.2
 
