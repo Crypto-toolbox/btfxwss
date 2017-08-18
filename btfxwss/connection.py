@@ -42,7 +42,7 @@ class WebSocketConnection(Thread):
         self.q = Queue()
 
         # Connection Settings
-        self.conn = None
+        self.socket = None
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
 
         # Connection Handling Attributes
@@ -83,8 +83,8 @@ class WebSocketConnection(Thread):
         self.log.debug("disconnect(): Disconnecting from API..")
         self.reconnect_required.clear()
         self.disconnect_called.set()
-        if self.conn:
-            self.conn.close()
+        if self.socket:
+            self.socket.close()
         self.join(timeout=1)
 
     def reconnect(self):
@@ -96,8 +96,8 @@ class WebSocketConnection(Thread):
         self.log.debug("reconnect(): Initialzion reconnect sequence..")
         self.connected.clear()
         self.reconnect_required.set()
-        if self.conn:
-            self.conn.close()
+        if self.socket:
+            self.socket.close()
 
     def _connect(self):
         """Creates a websocket connection.
@@ -105,7 +105,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         self.log.debug("_connect(): Initializing Connection..")
-        self.conn = websocket.WebSocketApp(
+        self.socket = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
             on_message=self._on_message,
@@ -117,7 +117,7 @@ class WebSocketConnection(Thread):
         sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
 
         self.log.debug("_connect(): Starting Connection..")
-        self.conn.run_forever(sslopt=sslopt_ca_certs)
+        self.socket.run_forever(sslopt=sslopt_ca_certs)
 
         while self.reconnect_required.is_set():
             if not self.disconnect_called.is_set():
@@ -128,8 +128,8 @@ class WebSocketConnection(Thread):
 
                 # We need to set this flag since closing the socket will
                 # set it to False
-                self.conn.keep_running = True
-                self.conn.run_forever(sslopt=sslopt_ca_certs)
+                self.socket.keep_running = True
+                self.socket.run_forever(sslopt=sslopt_ca_certs)
 
     def run(self):
         """Main method of Thread.
@@ -223,7 +223,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         self.log.debug("send_ping(): Sending ping to API..")
-        self.conn.send(json.dumps({'event': 'ping'}))
+        self.socket.send(json.dumps({'event': 'ping'}))
         self.pong_timer = Timer(self.pong_timeout, self._check_pong)
         self.pong_timer.start()
 
@@ -253,7 +253,7 @@ class WebSocketConnection(Thread):
         else:
             payload = json.dumps(kwargs)
         self.log.debug("send(): Sending payload to API: %s", payload)
-        self.conn.send(payload)
+        self.socket.send(payload)
 
     def pass_to_client(self, event, data, *args):
         """Passes data up to the client via a Queue().
