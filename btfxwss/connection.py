@@ -80,6 +80,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        self.log.debug("disconnect(): Disconnecting from API..")
         self.reconnect_required.clear()
         self.disconnect_called.set()
         if self.conn:
@@ -92,6 +93,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Reconnect attempt at self.reconnect_interval
+        self.log.debug("reconnect(): Initialzion reconnect sequence..")
         self.connected.clear()
         self.reconnect_required.set()
         if self.conn:
@@ -102,7 +104,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
-
+        self.log.debug("_connect(): Initializing Connection..")
         self.conn = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
@@ -113,6 +115,8 @@ class WebSocketConnection(Thread):
 
         ssl_defaults = ssl.get_default_verify_paths()
         sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
+
+        self.log.debug("_connect(): Starting Connection..")
         self.conn.run_forever(sslopt=sslopt_ca_certs)
 
         while self.reconnect_required.is_set():
@@ -132,6 +136,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        self.log.debug("run(): Starting up..")
         self._connect()
 
     def _on_message(self, ws, message):
@@ -142,8 +147,8 @@ class WebSocketConnection(Thread):
         self._stop_timers()
 
         raw, received_at = message, time.time()
-
-
+        self.log.debug("_on_message(): Received new message %s at %s",
+                       raw, received_at)
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
@@ -193,12 +198,14 @@ class WebSocketConnection(Thread):
 
         if self.pong_timer:
             self.pong_timer.cancel()
+        self.log.debug("_stop_timers(): Timers stopped.")
 
     def _start_timers(self):
         """Resets and starts timers for API data and connection.
 
         :return:
         """
+        self.log.debug("_start_timers(): Resetting timers..")
         self._stop_timers()
 
         # Sends a ping at ping_interval to see if API still responding
@@ -215,6 +222,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        self.log.debug("send_ping(): Sending ping to API..")
         self.conn.send(json.dumps({'event': 'ping'}))
         self.pong_timer = Timer(self.pong_timeout, self._check_pong)
         self.pong_timer.start()
@@ -226,9 +234,12 @@ class WebSocketConnection(Thread):
         """
         self.pong_timer.cancel()
         if self.pong_received:
+            self.log.debug("_check_pong(): Pong received in time.")
             self.pong_received = False
         else:
             # reconnect
+            self.log.debug("_check_pong(): Pong not received in time."
+                           "Issuing reconnect..")
             self.reconnect()
 
     def send(self, list_data=None, **kwargs):
@@ -241,6 +252,7 @@ class WebSocketConnection(Thread):
             payload = json.dumps(list_data)
         else:
             payload = json.dumps(kwargs)
+        self.log.debug("send(): Sending payload to API: %s", payload)
         self.conn.send(payload)
 
     def pass_to_client(self, event, data, *args):
@@ -258,6 +270,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        self.log.debug("_connection_timed_out(): Fired! Issuing reconnect..")
         self.reconnect()
 
     def _pause(self):
@@ -265,6 +278,7 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        self.log.debug("_pause(): Setting paused() Flag!")
         self.paused.set()
 
     def _unpause(self):
@@ -275,8 +289,9 @@ class WebSocketConnection(Thread):
 
         :return:
         """
+        self.log.debug("_unpause(): Clearing paused() Flag!")
         self.paused.clear()
-
+        self.log.debug("_unpause(): Issuing resubscription to client..")
         self.pass_to_client('re-subscribe', None)
 
     def _heartbeat_handler(self):
@@ -285,6 +300,8 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Restart our timers since we received some data
+        self.log.debug("_heartbeat_handler(): Received a heart beat "
+                       "from connection!")
         self._start_timers()
 
     def _pong_handler(self):
@@ -293,6 +310,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         # We received a Pong response to our Ping!
+        self.log.debug("_pong_handler(): Received a Pong message!")
         self.pong_received = True
 
     def _system_handler(self, data, ts):
@@ -305,15 +323,24 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
+        log.debug("_system_handler(): Received a system message: %s", data)
         # Unpack the data
         event = data.pop('event')
         if event == 'pong':
+            log.debug("_system_handler(): Distributing %s to _pong_handler..",
+                      data)
             self._pong_handler()
         elif event == 'info':
+            log.debug("_system_handler(): Distributing %s to _info_handler..",
+                      data)
             self._info_handler(data)
         elif event == 'error':
+            log.debug("_system_handler(): Distributing %s to _error_handler..",
+                      data)
             self._error_handler(data)
         elif event in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
+            log.debug("_system_handler(): Distributing %s to "
+                      "_response_handler..", data)
             self._response_handler(event, data, ts)
         else:
             self.log.error("Unhandled event: %s, data: %s", event, data)
@@ -327,6 +354,8 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
+        log.debug("_response_handler(): Passing %s to client..",
+                  data)
         self.pass_to_client(event, data, ts)
 
     def _info_handler(self, data):
@@ -381,6 +410,8 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Pass the data up to the Client
+        log.debug("_data_handler(): Passing %s to client..",
+                  data)
         self.pass_to_client('data', data, ts)
 
 
