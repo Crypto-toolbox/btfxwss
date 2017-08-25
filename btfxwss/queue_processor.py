@@ -81,7 +81,10 @@ class QueueProcessor(Thread):
                                       'hfcs': 'Historical Credits',
                                       'hfls': 'Historical Loans',
                                       'htfs': 'Funding Trades',
-                                      'n': 'Notifications'}
+                                      'n': 'Notifications',
+                                      'on': 'Order New',
+                                      'ou': 'Order Update',
+                                      'oc': 'Order Cancel'}
 
     def join(self, timeout=None):
         """Set sentinel for run() method and join thread.
@@ -125,7 +128,7 @@ class QueueProcessor(Thread):
                         self.update_timestamps(channel_id, ts)
                     else:
                         # This is data from auth channel, call handler
-                        self._handle_account(data, ts)
+                        self._handle_account(data=data, ts=ts)
                 except KeyError:
                     self.log.error("Channel ID does not have a data handler! %s",
                                    message)
@@ -236,7 +239,7 @@ class QueueProcessor(Thread):
                              "not present anymore.",
                              self.channel_directory[chan_id])
 
-    def _handle_account(self, dtype, data, ts):
+    def _handle_account(self, data, ts):
         """ Handles Account related data.
 
         translation table for channel names:

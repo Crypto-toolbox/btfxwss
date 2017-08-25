@@ -63,6 +63,30 @@ class BtfxWss:
         return self.queue_processor.account['Orders']
 
     @property
+    def orders_new(self):
+        """Return queue containing new orders associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Order New']
+
+    @property
+    def orders_update(self):
+        """Return queue containing order updates associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Order Update']
+
+    @property
+    def orders_cancel(self):
+        """Return queue containing order cancellations associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Order Cancel']
+
+    @property
     def positions(self):
         """Return queue containing open positions associated with the user 
         account.
