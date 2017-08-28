@@ -488,7 +488,7 @@ class BtfxWss:
         """
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
-        nonce = str(int(time.time() * 1000))
+        nonce = str(int(time.time() * 10000000))
         auth_string = 'AUTH' + nonce
         auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
                             hashlib.sha384).hexdigest()
