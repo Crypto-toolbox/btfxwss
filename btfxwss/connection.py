@@ -432,19 +432,18 @@ class WebSocketConnection(Thread):
                 identifier, q = self.channel_configs.popitem(last=True if soft else False)
             except KeyError:
                 break
-            if soft:
-                q_list.append((identifier, q.copy()))
-                q['event'] = 'unsubscribe'
-                self.send(**q)
 
-            else:
-                self.channel_configs[identifier] = q
-                self.send(**q)
+            q_list.append((identifier, q.copy()))
+            if soft:
+                q['event'] = 'unsubscribe'
+            self.send(**q)
 
         # Resubscribe for soft start.
         if soft:
             for identifier, q in reversed(q_list):
                 self.channel_configs[identifier] = q
                 self.send(**q)
-
+        else:
+            for identifier, q in q_list:
+                self.channel_configs[identifier] = q
 
