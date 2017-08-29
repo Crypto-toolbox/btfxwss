@@ -5,7 +5,7 @@ import time
 import ssl
 from queue import Queue
 from threading import Thread, Event, Timer
-
+from collections import OrderedDict
 # Import Third-Party
 import websocket
 
@@ -44,6 +44,9 @@ class WebSocketConnection(Thread):
         # Connection Settings
         self.socket = None
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
+
+        # Dict to store all subscribe commands for reconnects
+        self.channel_configs = OrderedDict()
 
         # Connection Handling Attributes
         self.connected = Event()
@@ -179,6 +182,9 @@ class WebSocketConnection(Thread):
         self.connected.set()
         self.send_ping()
         self._start_timers()
+        if self.reconnect_required.is_set():
+            self.log.info("_on_open(): Connection reconnected, re-subscribing..")
+            self._resubscribe(soft=False)
 
     def _on_error(self, ws, error):
         self.log.info("Connection Error - %s", error)
@@ -291,8 +297,8 @@ class WebSocketConnection(Thread):
         """
         self.log.debug("_unpause(): Clearing paused() Flag!")
         self.paused.clear()
-        self.log.debug("_unpause(): Issuing resubscription to client..")
-        self.pass_to_client('re-subscribe', None)
+        self.log.debug("_unpause(): Re-subscribing softly..")
+        self._resubscribe(soft=True)
 
     def _heartbeat_handler(self):
         """Handles heartbeat messages.
@@ -414,7 +420,31 @@ class WebSocketConnection(Thread):
                   data)
         self.pass_to_client('data', data, ts)
 
+    def _resubscribe(self, soft=False):
+        """Resubscribes to all channels found in self.channel_configs.
 
+        :param soft: if True, unsubscribes first.
+        :return: None
+        """
+        q_list = []
+        while True:
+            try:
+                identifier, q = self.channel_configs.popitem(last=True if soft else False)
+            except KeyError:
+                break
+            if soft:
+                q_list.append((identifier, q.copy()))
+                q['event'] = 'unsubscribe'
+                self.send(**q)
 
+            else:
+                self.channel_configs[identifier] = q
+                self.send(**q)
+
+        # Resubscribe for soft start.
+        if soft:
+            for identifier, q in reversed(q_list):
+                self.channel_configs[identifier] = q
+                self.send(**q)
 
 
