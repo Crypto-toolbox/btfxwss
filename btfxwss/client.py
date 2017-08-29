@@ -42,9 +42,6 @@ class BtfxWss:
         self.key = key if key else ''
         self.secret = secret if secret else ''
 
-        # Set up book-keeping variables & configurations
-        self.channel_configs = defaultdict(dict)
-
         self.conn = WebSocketConnection(log_level=log_level,
                                         **wss_kwargs)
         self.queue_processor = QueueProcessor(self.conn.q,
@@ -53,6 +50,9 @@ class BtfxWss:
     ##############
     # Properties #
     ##############
+    @property
+    def channel_configs(self):
+        return self.conn.channel_configs
 
     @property
     def orders(self):
