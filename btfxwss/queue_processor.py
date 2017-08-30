@@ -75,6 +75,7 @@ class QueueProcessor(Thread):
                                       'hts': 'Trades', 'fls': 'Loans',
                                       'te': 'Trades', 'tu': 'Trades',
                                       'ws': 'Wallets', 'bu': 'Balance Info',
+                                      'wu': 'Wallets',
                                       'miu': 'Margin Info', 'fos': 'Offers',
                                       'fiu': 'Funding Info',  'fcs': 'Credits',
                                       'hfos': 'Historical Offers',
