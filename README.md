@@ -27,7 +27,7 @@ pip install btfxwss
 Usage
 =====
 
-```
+```python
     from btfxwss import BtfxWss
     
     log = logging.getLogger(__name__)
