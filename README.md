@@ -27,10 +27,9 @@ pip install btfxwss
 Usage
 =====
 
-```
+```python
     from btfxwss import BtfxWss
     
-    logging.basicConfig(level=logging.DEBUG, filename='test.log')
     log = logging.getLogger(__name__)
 
     fh = logging.FileHandler('test.log')
@@ -40,10 +39,13 @@ Usage
 
     log.addHandler(sh)
     log.addHandler(fh)
+    logging.basicConfig(level=logging.DEBUG, handlers=[fh, sh])
     
     wss = BtfxWss()
     wss.start()
-    time.sleep(1)  # give the client some prep time to set itself up.
+    
+    # Wait (indefinitely) for the websocket connection to happen.
+    wss.conn.wait():
     
     # Subscribe to some channels
     wss.subscribe_to_ticker('BTCUSD')
