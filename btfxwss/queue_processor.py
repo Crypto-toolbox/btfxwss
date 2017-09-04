@@ -147,10 +147,10 @@ class QueueProcessor(Thread):
         channel_name = data.pop('channel')
         channel_id = data.pop('chanId')
         config = data
-        if 'pair' in config:
-            symbol = config['pair']
-        elif 'symbol' in config:
+        if 'symbol' in config:
             symbol = config['symbol']
+        elif 'pair' in config:
+            symbol = config['pair']
         elif 'key' in config:
             symbol = config['key'].split(':')[2][1:]  #layout type:interval:tPair
         else:
