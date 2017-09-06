@@ -75,6 +75,13 @@ Your help is required
 If you find any bugs, error or have feature requests, please don't hesitate to open an issue.
 Be as descriptive as possible, and I'll look into the matter as soon as I can.
 
+Looking for a REST client?
+==========================
+
+Checkout [`BitEx`](https://github.com/nlsdfnbch/bitex), a python-based Framework for connecting to a variety of Bitcoin
+exchanges, including `Bitfinex`!
+
+
 Thanks
 ======
 
