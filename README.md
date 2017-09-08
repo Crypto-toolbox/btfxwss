@@ -27,7 +27,11 @@ pip install btfxwss
 Usage
 =====
 
-```
+```python
+    
+    import logging 
+    import time
+
     from btfxwss import BtfxWss
     
     logging.basicConfig(level=logging.DEBUG, filename='test.log')
@@ -43,7 +47,9 @@ Usage
     
     wss = BtfxWss()
     wss.start()
-    time.sleep(1)  # give the client some prep time to set itself up.
+    
+    while not wss.conn.connected.is_set():
+        time.sleep(1)
     
     # Subscribe to some channels
     wss.subscribe_to_ticker('BTCUSD')
