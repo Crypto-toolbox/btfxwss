@@ -254,6 +254,9 @@ class WebSocketConnection(Thread):
         :param kwargs: payload paarameters as key=value pairs
         :return:
         """
+        if not self.connected.is_set():
+            self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
+            return
         if list_data:
             payload = json.dumps(list_data)
         else:
