@@ -264,7 +264,7 @@ class WebSocketConnection(Thread):
 
             payload = {'event': 'auth', 'apiKey': key, 'authSig': auth_sig,
                        'authPayload': auth_string, 'authNonce': nonce}
-        if list_data:
+        elif list_data:
             payload = json.dumps(list_data)
         else:
             payload = json.dumps(kwargs)
