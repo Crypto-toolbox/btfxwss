@@ -259,10 +259,10 @@ class WebSocketConnection(Thread):
         if auth:
             nonce = str(int(time.time() * 10000000))
             auth_string = 'AUTH' + nonce
-            auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
+            auth_sig = hmac.new(secret.encode(), auth_string.encode(),
                                 hashlib.sha384).hexdigest()
 
-            payload = {'event': 'auth', 'apiKey': self.key, 'authSig': auth_sig,
+            payload = {'event': 'auth', 'apiKey': key, 'authSig': auth_sig,
                        'authPayload': auth_string, 'authNonce': nonce}
         if list_data:
             payload = json.dumps(list_data)
