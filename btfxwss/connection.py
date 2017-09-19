@@ -3,6 +3,8 @@ import logging
 import json
 import time
 import ssl
+import hashlib
+import hmac
 from queue import Queue
 from threading import Thread, Event, Timer
 from collections import OrderedDict
