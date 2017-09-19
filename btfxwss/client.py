@@ -57,7 +57,7 @@ class BtfxWss:
     @property
     def orders(self):
         """Return queue containing open orders associated with the user account.
-        
+
         :return: Queue()
         """
         return self.queue_processor.account['Orders']
@@ -88,9 +88,9 @@ class BtfxWss:
 
     @property
     def positions(self):
-        """Return queue containing open positions associated with the user 
+        """Return queue containing open positions associated with the user
         account.
-        
+
         :return: Queue()
         """
         return self.queue_processor.account['Positions']
@@ -98,7 +98,7 @@ class BtfxWss:
     @property
     def historical_orders(self):
         """Return history of orders associated with the user account.
-        
+
         :return: Queue()
         """
         return self.queue_processor.account['Historical Orders']
@@ -106,7 +106,7 @@ class BtfxWss:
     @property
     def transactions(self):
         """Return history of trades associacted with the user account.
-        
+
         :return: Queue()
         """
         return self.queue_processor.account['Trades']
@@ -221,16 +221,16 @@ class BtfxWss:
 
     def start(self):
         """Start the client.
-        
-        :return: 
+
+        :return:
         """
         self.conn.start()
         self.queue_processor.start()
 
     def stop(self):
         """Stop the client.
-        
-        :return: 
+
+        :return:
         """
         self.conn.disconnect()
         self.queue_processor.join()
@@ -241,8 +241,8 @@ class BtfxWss:
 
     def tickers(self, pair):
         """Return a queue containing all received ticker data.
-        
-        :param pair: 
+
+        :param pair:
         :return: Queue()
         """
         key = ('ticker', pair)
@@ -254,7 +254,7 @@ class BtfxWss:
     def books(self, pair):
         """Return a queue containing all received book data.
 
-        :param pair: 
+        :param pair:
         :return: Queue()
         """
         key = ('book', pair)
@@ -266,7 +266,7 @@ class BtfxWss:
     def raw_books(self, pair):
         """Return a queue containing all received raw book data.
 
-        :param pair: 
+        :param pair:
         :return: Queue()
         """
         key = ('raw_book', pair)
@@ -278,7 +278,7 @@ class BtfxWss:
     def trades(self, pair):
         """Return a queue containing all received trades data.
 
-        :param pair: 
+        :param pair:
         :return: Queue()
         """
         key = ('trades', pair)
@@ -390,7 +390,7 @@ class BtfxWss:
         """Subscribe to the passed pair's raw order book channel.
 
         :param pair: str, Symbol pair to request data for
-        :param prec: 
+        :param prec:
         :param kwargs:
         :return:
         """
@@ -403,7 +403,7 @@ class BtfxWss:
         """Unsubscribe to the passed pair's raw order book channel.
 
         :param pair: str, Symbol pair to request data for
-        :param prec: 
+        :param prec:
         :param kwargs:
         :return:
         """
@@ -483,19 +483,13 @@ class BtfxWss:
     @is_connected
     def authenticate(self):
         """Authenticate with the Bitfinex API.
-        
-        :return: 
+
+        :return:
         """
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
-        nonce = str(int(time.time() * 10000000))
-        auth_string = 'AUTH' + nonce
-        auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
-                            hashlib.sha384).hexdigest()
-
-        payload = {'event': 'auth', 'apiKey': self.key, 'authSig': auth_sig,
-                   'authPayload': auth_string, 'authNonce': nonce}
-        self.conn.send(**payload)
+        self.channel_configs['auth'] = {'key': self.key, 'secret': self.secret}
+        self.conn.send(key=self.key, secret=self.secret, auth=True)
 
     @is_connected
     def new_order(self, **order_settings):
