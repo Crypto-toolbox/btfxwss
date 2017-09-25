@@ -152,8 +152,12 @@ class QueueProcessor(Thread):
         config = data
         if 'pair' in config:
             symbol = config['pair']
+            if symbol.startswith('t'):
+                symbol = symbol[1:]
         elif 'symbol' in config:
             symbol = config['symbol']
+            if symbol.startswith('t'):
+                symbol = symbol[1:]
         elif 'key' in config:
             symbol = config['key'].split(':')[2][1:]  #layout type:interval:tPair
         else:
