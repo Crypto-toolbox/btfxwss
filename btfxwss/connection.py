@@ -3,6 +3,8 @@ import logging
 import json
 import time
 import ssl
+import hashlib
+import hmac
 from queue import Queue
 from threading import Thread, Event, Timer
 from collections import OrderedDict
@@ -248,18 +250,30 @@ class WebSocketConnection(Thread):
                            "Issuing reconnect..")
             self.reconnect()
 
-    def send(self, list_data=None, **kwargs):
+    def send(self,key=None, secret=None, list_data=None, auth=False, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
         :return:
         """
-        if list_data:
+        if auth:
+            nonce = str(int(time.time() * 10000000))
+            auth_string = 'AUTH' + nonce
+            auth_sig = hmac.new(secret.encode(), auth_string.encode(),
+                                hashlib.sha384).hexdigest()
+
+            payload = {'event': 'auth', 'apiKey': key, 'authSig': auth_sig,
+                       'authPayload': auth_string, 'authNonce': nonce}
+        elif list_data:
             payload = json.dumps(list_data)
         else:
             payload = json.dumps(kwargs)
         self.log.debug("send(): Sending payload to API: %s", payload)
-        self.socket.send(payload)
+        try:
+            self.socket.send(payload)
+        except websocket.WebSocketConnectionClosedException:
+            self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
+
 
     def pass_to_client(self, event, data, *args):
         """Passes data up to the client via a Queue().
@@ -432,6 +446,9 @@ class WebSocketConnection(Thread):
                 identifier, q = self.channel_configs.popitem(last=True if soft else False)
             except KeyError:
                 break
+            if identifier == 'auth':
+                self.send(**q, auth=True)
+                continue
 
             q_list.append((identifier, q.copy()))
             if soft:
@@ -446,4 +463,3 @@ class WebSocketConnection(Thread):
         else:
             for identifier, q in q_list:
                 self.channel_configs[identifier] = q
-
