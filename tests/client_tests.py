@@ -33,7 +33,8 @@ class BtfxWssTests(TestCase):
         except Empty:
             self.fail("No candles data arrived!")
         except KeyError:
-            self.fail("No candles data arrived! %s" % list(wss.queue_processor.candles.keys()))
+            self.fail("No candles data arrived, key not found! %s" %
+                      list(wss.queue_processor.candles.keys()))
 
         try:
             wss.books('BTCUSD').get(block=False)
