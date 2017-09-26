@@ -274,7 +274,6 @@ class WebSocketConnection(Thread):
         except websocket.WebSocketConnectionClosedException:
             self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
 
-
     def pass_to_client(self, event, data, *args):
         """Passes data up to the client via a Queue().
 
@@ -343,23 +342,23 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        log.debug("_system_handler(): Received a system message: %s", data)
+        self.log.debug("_system_handler(): Received a system message: %s", data)
         # Unpack the data
         event = data.pop('event')
         if event == 'pong':
-            log.debug("_system_handler(): Distributing %s to _pong_handler..",
+            self.log.debug("_system_handler(): Distributing %s to _pong_handler..",
                       data)
             self._pong_handler()
         elif event == 'info':
-            log.debug("_system_handler(): Distributing %s to _info_handler..",
+            self.log.debug("_system_handler(): Distributing %s to _info_handler..",
                       data)
             self._info_handler(data)
         elif event == 'error':
-            log.debug("_system_handler(): Distributing %s to _error_handler..",
+            self.log.debug("_system_handler(): Distributing %s to _error_handler..",
                       data)
             self._error_handler(data)
         elif event in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
-            log.debug("_system_handler(): Distributing %s to "
+            self.log.debug("_system_handler(): Distributing %s to "
                       "_response_handler..", data)
             self._response_handler(event, data, ts)
         else:
@@ -374,7 +373,7 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        log.debug("_response_handler(): Passing %s to client..",
+        self.log.debug("_response_handler(): Passing %s to client..",
                   data)
         self.pass_to_client(event, data, ts)
 
@@ -430,7 +429,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Pass the data up to the Client
-        log.debug("_data_handler(): Passing %s to client..",
+        self.log.debug("_data_handler(): Passing %s to client..",
                   data)
         self.pass_to_client('data', data, ts)
 
