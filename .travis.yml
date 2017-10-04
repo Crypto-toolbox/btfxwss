@@ -5,12 +5,14 @@ python:
 
 install:
   - pip install -r requirements.txt
-  - python3 setup.py install
+  - python3 setup.py install --record files.txt
 
 # command to run tests
 script:
   - cd tests
   - python client_tests.py
+  - cd ..
+  - cat files.txt | xargs rm -rf
   - pip install btfxwss
   - pip install --pre btfxwss
 
