@@ -2,7 +2,7 @@
 import logging
 from threading import Thread, Event
 from queue import Empty
-from multiprocessing.queues import Queue
+from multiprocessing import Queue
 from collections import defaultdict
 
 # Import Third-Party

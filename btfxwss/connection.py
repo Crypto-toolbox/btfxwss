@@ -5,9 +5,10 @@ import time
 import ssl
 import hashlib
 import hmac
-from multiprocessing.queues import Queue
+from multiprocessing import Queue
 from threading import Thread, Event, Timer
 from collections import OrderedDict
+
 # Import Third-Party
 import websocket
 
