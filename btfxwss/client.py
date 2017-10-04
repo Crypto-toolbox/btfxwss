@@ -1,5 +1,5 @@
 # Import Built-Ins
-import logginggit
+import logging
 
 # Import Homebrew
 from btfxwss.connection import WebSocketConnection
