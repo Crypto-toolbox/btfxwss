@@ -5,7 +5,7 @@ import time
 import ssl
 import hashlib
 import hmac
-from queue import Queue
+from multiprocessing.queues import Queue
 from threading import Thread, Event, Timer
 from collections import OrderedDict
 # Import Third-Party

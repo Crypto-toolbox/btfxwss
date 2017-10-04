@@ -1,7 +1,8 @@
 # Import Built-Ins
 import logging
 from threading import Thread, Event
-from queue import Empty, Queue
+from queue import Empty
+from multiprocessing.queues import Queue
 from collections import defaultdict
 
 # Import Third-Party
