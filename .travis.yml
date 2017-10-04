@@ -4,12 +4,14 @@ python:
   - "3.6"
 
 install:
-  - python3 -m pip install --pre btfxwss
+  - python3 setup.py install
 
 # command to run tests
 script:
   - cd tests
-  - python -m unittest client_tests.py
+  - python client_tests.py
+  - pip install btfxwss
+  - pip install --pre btfxwss
 
 
 branches:
