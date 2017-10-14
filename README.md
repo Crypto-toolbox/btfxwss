@@ -1,4 +1,4 @@
-BTFXWSS
+BTFXWSS[![Build Status](https://travis-ci.org/nlsdfnbch/btfxwss.svg?branch=release-1.1.2)](https://travis-ci.org/nlsdfnbch/btfxwss)
 =======
 
 Client for Bitfinex Websocket API written in Python
