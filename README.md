@@ -30,8 +30,8 @@ Usage
 =====
 
 ```python
-    
-    import logging 
+    import logging
+
     import time
 
     from btfxwss import BtfxWss
