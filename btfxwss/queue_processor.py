@@ -139,7 +139,7 @@ class QueueProcessor(Thread):
                 continue
 
     def _handle_subscribed(self, dtype, data, ts,):
-        """Handles responses to subscribe() commands
+        """Handles responses to subscribe() commands.
 
         Registers a channel id with the client and assigns a data handler to it.
 
@@ -152,6 +152,7 @@ class QueueProcessor(Thread):
         channel_name = data.pop('channel')
         channel_id = data.pop('chanId')
         config = data
+
         if 'pair' in config:
             symbol = config['pair']
             if symbol.startswith('t'):
@@ -181,7 +182,7 @@ class QueueProcessor(Thread):
         self.log.info("Subscription succesful for channel %s", identifier)
 
     def _handle_unsubscribed(self, dtype, data, ts):
-        """Handles responses to unsubscribe() commands
+        """Handles responses to unsubscribe() commands.
 
         Removes a channel id from the client.
 
@@ -201,7 +202,7 @@ class QueueProcessor(Thread):
         self.log.info("Successfully unsubscribed from %s", chan_identifier)
 
     def _handle_auth(self, dtype, data, ts):
-        """Handles authentication responses
+        """Handles authentication responses.
 
         :param dtype:
         :param data:
@@ -297,7 +298,7 @@ class QueueProcessor(Thread):
         self.tickers[channel_identifier].put(entry)
 
     def _handle_book(self, dtype, data, ts):
-        """Updates the order book stored in self.books[chan_id]
+        """Updates the order book stored in self.books[chan_id].
 
         :param dtype:
         :param data:
@@ -312,7 +313,7 @@ class QueueProcessor(Thread):
         self.books[channel_identifier].put(entry)
 
     def _handle_raw_book(self, dtype, data, ts):
-        """Updates the raw order books stored in self.raw_books[chan_id]
+        """Updates the raw order books stored in self.raw_books[chan_id].
 
         :param dtype:
         :param data:
@@ -326,7 +327,7 @@ class QueueProcessor(Thread):
         self.raw_books[channel_identifier].put(entry)
 
     def _handle_trades(self, dtype, data, ts):
-        """Files trades in self._trades[chan_id]
+        """Files trades in self._trades[chan_id].
 
         :param dtype:
         :param data:
@@ -340,7 +341,7 @@ class QueueProcessor(Thread):
         self.trades[channel_identifier].put(entry)
 
     def _handle_candles(self, dtype, data, ts):
-        """Stores OHLC data received via wss in self.candles[chan_id]
+        """Stores OHLC data received via wss in self.candles[chan_id].
 
         :param dtype:
         :param data:

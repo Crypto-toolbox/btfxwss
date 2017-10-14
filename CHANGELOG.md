@@ -16,7 +16,7 @@ in variable naming
 ## Added
 - Support for Authentication Channels Data Stream
 - Properties on Client class to ease access to account information
-- More debug log calls to connection class to provide more indepth information.
+- More debug log calls to connection class to provide more in-depth information.
 
 ## Fixed
 - Issue where Error codes would cause a reconnect when not necessary
@@ -42,9 +42,7 @@ to call a client method before the connection was established
 
 ## Changed
 - Moved processing of data and connection handling to separate class each
-- rewrote connection code
+- Rewrote connection code
 - Data is now supplied as queues
 - Removed `open()` call in setup.py, caused error on install
 
-
-## Removed

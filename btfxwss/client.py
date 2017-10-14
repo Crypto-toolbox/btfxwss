@@ -101,7 +101,7 @@ class BtfxWss:
 
     @property
     def transactions(self):
-        """Return history of trades associacted with the user account.
+        """Return history of trades associated with the user account.
 
         :return: Queue()
         """
@@ -109,7 +109,7 @@ class BtfxWss:
 
     @property
     def loans(self):
-        """Return current loans associacted with the user account.
+        """Return current loans associated with the user account.
 
         :return: Queue()
         """
@@ -117,7 +117,7 @@ class BtfxWss:
 
     @property
     def historical_loans(self):
-        """Return history of loans associacted with the user account.
+        """Return history of loans associated with the user account.
 
         :return: Queue()
         """
@@ -125,7 +125,7 @@ class BtfxWss:
 
     @property
     def wallets(self):
-        """Return wallet balances associacted with the user account.
+        """Return wallet balances associated with the user account.
 
         :return: Queue()
         """
@@ -133,7 +133,7 @@ class BtfxWss:
 
     @property
     def balance_info(self):
-        """Return balance information associacted with the user account.
+        """Return balance information associated with the user account.
 
         :return: Queue()
         """
@@ -141,7 +141,7 @@ class BtfxWss:
 
     @property
     def margin_info(self):
-        """Return margin information associacted with the user account.
+        """Return margin information associated with the user account.
 
         :return: Queue()
         """
@@ -149,7 +149,7 @@ class BtfxWss:
 
     @property
     def offers(self):
-        """Return current offers associacted with the user account.
+        """Return current offers associated with the user account.
 
         :return: Queue()
         """
@@ -157,7 +157,7 @@ class BtfxWss:
 
     @property
     def historical_offers(self):
-        """Return history of offers associacted with the user account.
+        """Return history of offers associated with the user account.
 
         :return: Queue()
         """
@@ -165,7 +165,7 @@ class BtfxWss:
 
     @property
     def funding_info(self):
-        """Return funding information associacted with the user account.
+        """Return funding information associated with the user account.
 
         :return: Queue()
         """
@@ -173,7 +173,7 @@ class BtfxWss:
 
     @property
     def credits(self):
-        """Return current credits associacted with the user account.
+        """Return current credits associated with the user account.
 
         :return: Queue()
         """
@@ -181,7 +181,7 @@ class BtfxWss:
 
     @property
     def historical_credits(self):
-        """Return history of credits associacted with the user account.
+        """Return history of credits associated with the user account.
 
         :return: Queue()
         """
@@ -197,7 +197,7 @@ class BtfxWss:
 
     @property
     def funding_trades(self):
-        """Return funding trades associacted with the user account.
+        """Return funding trades associated with the user account.
 
         :return: Queue()
         """
@@ -205,7 +205,7 @@ class BtfxWss:
 
     @property
     def notifications(self):
-        """Return notifications associacted with the user account.
+        """Return notifications associated with the user account.
 
         :return: Queue()
         """
@@ -456,7 +456,6 @@ class BtfxWss:
     def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
         """Unsubscribe to the passed pair's OHLC data channel.
 
-        v
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
                                 1D, 7D, 14D, 1M}
         :param kwargs:
@@ -489,7 +488,7 @@ class BtfxWss:
 
     @is_connected
     def new_order(self, **order_settings):
-        """Post a new Order va Websocket.
+        """Post a new Order via Websocket.
 
         :param kwargs:
         :return:
