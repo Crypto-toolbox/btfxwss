@@ -1,9 +1,5 @@
 # Import Built-Ins
 import logging
-import time
-import hmac
-import hashlib
-from collections import defaultdict
 
 # Import Homebrew
 from btfxwss.connection import WebSocketConnection
