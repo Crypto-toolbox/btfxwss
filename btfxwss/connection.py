@@ -251,7 +251,7 @@ class WebSocketConnection(Thread):
                            "Issuing reconnect..")
             self.reconnect()
 
-    def send(self,key=None, secret=None, list_data=None, auth=False, **kwargs):
+    def send(self,api_key=None, secret=None, list_data=None, auth=False, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
@@ -263,7 +263,7 @@ class WebSocketConnection(Thread):
             auth_sig = hmac.new(secret.encode(), auth_string.encode(),
                                 hashlib.sha384).hexdigest()
 
-            payload = {'event': 'auth', 'apiKey': key, 'authSig': auth_sig,
+            payload = {'event': 'auth', 'apiKey': api_key, 'authSig': auth_sig,
                        'authPayload': auth_string, 'authNonce': nonce}
         elif list_data:
             payload = json.dumps(list_data)
