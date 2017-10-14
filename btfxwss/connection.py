@@ -3,8 +3,11 @@ import logging
 import json
 import time
 import ssl
-from queue import Queue
+import hashlib
+import hmac
+from multiprocessing import Queue
 from threading import Thread, Event, Timer
+from collections import OrderedDict
 
 # Import Third-Party
 import websocket
@@ -44,6 +47,9 @@ class WebSocketConnection(Thread):
         # Connection Settings
         self.socket = None
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
+
+        # Dict to store all subscribe commands for reconnects
+        self.channel_configs = OrderedDict()
 
         # Connection Handling Attributes
         self.connected = Event()
@@ -179,6 +185,9 @@ class WebSocketConnection(Thread):
         self.connected.set()
         self.send_ping()
         self._start_timers()
+        if self.reconnect_required.is_set():
+            self.log.info("_on_open(): Connection reconnected, re-subscribing..")
+            self._resubscribe(soft=False)
 
     def _on_error(self, ws, error):
         self.log.info("Connection Error - %s", error)
@@ -242,18 +251,29 @@ class WebSocketConnection(Thread):
                            "Issuing reconnect..")
             self.reconnect()
 
-    def send(self, list_data=None, **kwargs):
+    def send(self,api_key=None, secret=None, list_data=None, auth=False, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
         :return:
         """
-        if list_data:
+        if auth:
+            nonce = str(int(time.time() * 10000000))
+            auth_string = 'AUTH' + nonce
+            auth_sig = hmac.new(secret.encode(), auth_string.encode(),
+                                hashlib.sha384).hexdigest()
+
+            payload = {'event': 'auth', 'apiKey': api_key, 'authSig': auth_sig,
+                       'authPayload': auth_string, 'authNonce': nonce}
+        elif list_data:
             payload = json.dumps(list_data)
         else:
             payload = json.dumps(kwargs)
         self.log.debug("send(): Sending payload to API: %s", payload)
-        self.socket.send(payload)
+        try:
+            self.socket.send(payload)
+        except websocket.WebSocketConnectionClosedException:
+            self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
 
     def pass_to_client(self, event, data, *args):
         """Passes data up to the client via a Queue().
@@ -291,8 +311,8 @@ class WebSocketConnection(Thread):
         """
         self.log.debug("_unpause(): Clearing paused() Flag!")
         self.paused.clear()
-        self.log.debug("_unpause(): Issuing resubscription to client..")
-        self.pass_to_client('re-subscribe', None)
+        self.log.debug("_unpause(): Re-subscribing softly..")
+        self._resubscribe(soft=True)
 
     def _heartbeat_handler(self):
         """Handles heartbeat messages.
@@ -323,23 +343,23 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        log.debug("_system_handler(): Received a system message: %s", data)
+        self.log.debug("_system_handler(): Received a system message: %s", data)
         # Unpack the data
         event = data.pop('event')
         if event == 'pong':
-            log.debug("_system_handler(): Distributing %s to _pong_handler..",
+            self.log.debug("_system_handler(): Distributing %s to _pong_handler..",
                       data)
             self._pong_handler()
         elif event == 'info':
-            log.debug("_system_handler(): Distributing %s to _info_handler..",
+            self.log.debug("_system_handler(): Distributing %s to _info_handler..",
                       data)
             self._info_handler(data)
         elif event == 'error':
-            log.debug("_system_handler(): Distributing %s to _error_handler..",
+            self.log.debug("_system_handler(): Distributing %s to _error_handler..",
                       data)
             self._error_handler(data)
         elif event in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
-            log.debug("_system_handler(): Distributing %s to "
+            self.log.debug("_system_handler(): Distributing %s to "
                       "_response_handler..", data)
             self._response_handler(event, data, ts)
         else:
@@ -354,7 +374,7 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        log.debug("_response_handler(): Passing %s to client..",
+        self.log.debug("_response_handler(): Passing %s to client..",
                   data)
         self.pass_to_client(event, data, ts)
 
@@ -410,11 +430,36 @@ class WebSocketConnection(Thread):
         :return:
         """
         # Pass the data up to the Client
-        log.debug("_data_handler(): Passing %s to client..",
+        self.log.debug("_data_handler(): Passing %s to client..",
                   data)
         self.pass_to_client('data', data, ts)
 
+    def _resubscribe(self, soft=False):
+        """Resubscribes to all channels found in self.channel_configs.
 
+        :param soft: if True, unsubscribes first.
+        :return: None
+        """
+        q_list = []
+        while True:
+            try:
+                identifier, q = self.channel_configs.popitem(last=True if soft else False)
+            except KeyError:
+                break
+            if identifier == 'auth':
+                self.send(**q, auth=True)
+                continue
 
+            q_list.append((identifier, q.copy()))
+            if soft:
+                q['event'] = 'unsubscribe'
+            self.send(**q)
 
-
+        # Resubscribe for soft start.
+        if soft:
+            for identifier, q in reversed(q_list):
+                self.channel_configs[identifier] = q
+                self.send(**q)
+        else:
+            for identifier, q in q_list:
+                self.channel_configs[identifier] = q

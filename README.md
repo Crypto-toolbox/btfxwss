@@ -1,12 +1,14 @@
-BTFXWSS
+BTFXWSS[![Build Status](https://travis-ci.org/nlsdfnbch/btfxwss.svg?branch=release-1.1.2)](https://travis-ci.org/nlsdfnbch/btfxwss)
 =======
 
 Client for Bitfinex Websocket API written in Python
 
 Currently supports all public endpoints; authenticated channels are a
-work in progress.
+work in progress, but are supported.
 
-Offers graceful exception handling of common server errors.
+Offers graceful exception handling of common server errors. Make sure you
+check the log messages and have proper logging enabled, as there are no
+exceptions thrown.
 
 Data is stored within `BtfxWss` as `Queue`s. There are convenience
 methods available to retrieve a queue for a given type. Consult
@@ -28,6 +30,10 @@ Usage
 =====
 
 ```python
+    
+    import logging 
+    import time
+
     from btfxwss import BtfxWss
     
     log = logging.getLogger(__name__)
@@ -43,9 +49,9 @@ Usage
     
     wss = BtfxWss()
     wss.start()
-    
-    # Wait (indefinitely) for the websocket connection to happen.
-    wss.conn.wait():
+
+    while not wss.conn.connected.is_set():
+        time.sleep(1)
     
     # Subscribe to some channels
     wss.subscribe_to_ticker('BTCUSD')

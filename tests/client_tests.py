@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 class BtfxWssTests(TestCase):
 
     def test_subscribing_to_data_works(self):
-        wss = BtfxWss()
+        wss = BtfxWss(log_level=logging.DEBUG)
         wss.start()
         time.sleep(1)
         wss.subscribe_to_ticker('BTCUSD')
@@ -32,6 +32,9 @@ class BtfxWssTests(TestCase):
             wss.candles('BTCUSD', '1m').get(block=False)
         except Empty:
             self.fail("No candles data arrived!")
+        except KeyError:
+            self.fail("No candles data arrived, key not found! %s" %
+                      list(wss.queue_processor.candles.keys()))
 
         try:
             wss.books('BTCUSD').get(block=False)
@@ -51,7 +54,7 @@ class BtfxWssTests(TestCase):
         wss.stop()
 
     def test_is_connected_decorator_works_as_expected(self):
-        wss = BtfxWss()
+        wss = BtfxWss(log_level=logging.CRITICAL)
         time.sleep(1)
         wss.start()
         try:
@@ -59,5 +62,7 @@ class BtfxWssTests(TestCase):
         except WebSocketConnectionClosedException:
             self.fail("Decorator did not work!")
         wss.stop()
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
