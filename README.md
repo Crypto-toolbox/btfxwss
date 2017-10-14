@@ -4,9 +4,11 @@ BTFXWSS[![Build Status](https://travis-ci.org/nlsdfnbch/btfxwss.svg?branch=relea
 Client for Bitfinex Websocket API written in Python
 
 Currently supports all public endpoints; authenticated channels are a
-work in progress.
+work in progress, but are supported.
 
-Offers graceful exception handling of common server errors.
+Offers graceful exception handling of common server errors. Make sure you
+check the log messages and have proper logging enabled, as there are no
+exceptions thrown.
 
 Data is stored within `BtfxWss` as `Queue`s. There are convenience
 methods available to retrieve a queue for a given type. Consult
