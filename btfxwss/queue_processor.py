@@ -1,7 +1,8 @@
 # Import Built-Ins
 import logging
 from threading import Thread, Event
-from queue import Empty, Queue
+from queue import Empty
+from multiprocessing import Queue
 from collections import defaultdict
 
 # Import Third-Party
@@ -75,13 +76,17 @@ class QueueProcessor(Thread):
                                       'hts': 'Trades', 'fls': 'Loans',
                                       'te': 'Trades', 'tu': 'Trades',
                                       'ws': 'Wallets', 'bu': 'Balance Info',
+                                      'wu': 'Wallets',
                                       'miu': 'Margin Info', 'fos': 'Offers',
                                       'fiu': 'Funding Info',  'fcs': 'Credits',
                                       'hfos': 'Historical Offers',
                                       'hfcs': 'Historical Credits',
                                       'hfls': 'Historical Loans',
                                       'htfs': 'Funding Trades',
-                                      'n': 'Notifications'}
+                                      'n': 'Notifications',
+                                      'on': 'Order New',
+                                      'ou': 'Order Update',
+                                      'oc': 'Order Cancel'}
 
     def join(self, timeout=None):
         """Set sentinel for run() method and join thread.
@@ -125,7 +130,7 @@ class QueueProcessor(Thread):
                         self.update_timestamps(channel_id, ts)
                     else:
                         # This is data from auth channel, call handler
-                        self._handle_account(data, ts)
+                        self._handle_account(data=data, ts=ts)
                 except KeyError:
                     self.log.error("Channel ID does not have a data handler! %s",
                                    message)
@@ -147,10 +152,15 @@ class QueueProcessor(Thread):
         channel_name = data.pop('channel')
         channel_id = data.pop('chanId')
         config = data
-        if 'symbol' in config:
-            symbol = config['symbol']
-        elif 'pair' in config:
+
+        if 'pair' in config:
             symbol = config['pair']
+            if symbol.startswith('t'):
+                symbol = symbol[1:]
+        elif 'symbol' in config:
+            symbol = config['symbol']
+            if symbol.startswith('t'):
+                symbol = symbol[1:]
         elif 'key' in config:
             symbol = config['key'].split(':')[2][1:]  #layout type:interval:tPair
         else:
@@ -236,8 +246,8 @@ class QueueProcessor(Thread):
                              "not present anymore.",
                              self.channel_directory[chan_id])
 
-    def _handle_account(self, dtype, data, ts):
-        """Handles Account related data.
+    def _handle_account(self, data, ts):
+        """ Handles Account related data.
 
         translation table for channel names:
             Data Channels
