@@ -2,7 +2,10 @@
 
 ## Fixed
 - If a connection drops, the client automatically resubscribes to channels
+- Fixed an issue where the candles channel wasn't subscribable due to an overvlap
+in variable naming
 - Fixed example in README.md
+- Added build state in README
 
 ## Changed
 - prioritizing symbol over pair now, when creating channel identifier
