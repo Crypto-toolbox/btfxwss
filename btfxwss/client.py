@@ -101,11 +101,7 @@ class BtfxWss:
 
     @property
     def transactions(self):
-<<<<<<< HEAD
-        """Return history of trades associacted with the user account.
-=======
         """Return history of trades associated with the user account.
->>>>>>> 30ec507bc063347241a0a50cf623fd35d7f6cda9
 
         :return: Queue()
         """
