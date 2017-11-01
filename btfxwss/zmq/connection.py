@@ -289,7 +289,7 @@ class WebSocketConnection(Process):
         if chan_id == '0':
             channel += '/' + data[0]
 
-        frames = (channel, data, ts)
+        frames = [json.dumps(x).encode() for x in (channel, data, ts)]
 
         self.publisher.send_multipart(frames)
 
@@ -376,7 +376,8 @@ class WebSocketConnection(Process):
                 sym = data['pair']
             else:
                 _, config, sym = data['key'].split(':')
-                sym = sym[1:] if sym.startswith('t') else sym
+
+            sym = sym[1:] if sym.startswith('t') else sym
 
             if not config:
                 if 'prec' in data:
@@ -473,6 +474,8 @@ class WebSocketConnection(Process):
                         payload.update(config)
                         if 'key' in payload:
                             payload['key'] = 'trade:' + payload['key'] + ':t' + pair
+                        else:
+                            payload['symbol'] = pair
                         self.send(**payload)
                 else:
                     if channel == 'auth':
@@ -483,3 +486,15 @@ class WebSocketConnection(Process):
                         self.send(**payload)
 
 
+if __name__ == '__main__':
+    logging.basicConfig(filename='zmq.log', filemode='w+', level=logging.DEBUG)
+
+    ctx = zmq.Context()
+    sock = ctx.socket(zmq.SUB)
+    sock.connect('tcp://127.0.0.1:6843')
+    sock.setsockopt(zmq.SUBSCRIBE, b'')
+    c = WebSocketConnection(zmq_addr='tcp://127.0.0.1:6843', log_level=logging.DEBUG)
+    c.start()
+    while True:
+        frames = sock.recv_multipart()
+        print(frames)
