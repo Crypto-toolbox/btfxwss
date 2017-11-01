@@ -61,8 +61,8 @@ class WebSocketConnection(Process):
 
         # ZeroMQ Publisher Socket used to relay data
         self.ctx = ctx or zmq.Context().instance()
-        self.publisher = self.ctx.socket(zmq.PUB)
-        self.publisher.bind(zmq_addr or 'ipc:/tmp/btfxwss')
+        self.publisher = None
+        self.zmq_addr = zmq_addr or 'ipc:/tmp/btfxwss'
 
         # Connection Settings for the WebSocket Connection
         self.socket = None
@@ -125,6 +125,8 @@ class WebSocketConnection(Process):
     def _connect(self):
         """Create a websocket connection."""
         self.log.debug("_connect(): Initializing Connection..")
+        self.publisher = self.ctx.socket(zmq.PUB)
+        self.publisher.bind(self.zmq_addr)
         self.socket = websocket.WebSocketApp(
             self.url,
             on_open=self._on_open,
@@ -290,7 +292,8 @@ class WebSocketConnection(Process):
             channel += '/' + data[0]
 
         frames = [json.dumps(x).encode() for x in (channel, data, ts)]
-
+        self.log.info("pass_to_client(): Sending frames %s from address %s..",
+                      frames, self.zmq_addr)
         self.publisher.send_multipart(frames)
 
     def _connection_timed_out(self):
@@ -449,8 +452,6 @@ class WebSocketConnection(Process):
     def _data_handler(self, data, ts):
         """Handles data messages by passing them up to the client."""
         # Pass the data up to the Client
-        log.debug("_data_handler(): Passing %s to client..",
-                  data)
         chan_id, *data = data
         self.pass_to_client(chan_id, data, ts)
 
@@ -467,6 +468,11 @@ class WebSocketConnection(Process):
                                {'key': '1D'}, {'key': '7D'}, {'key': '14D'}, {'key': '1M'}],
                    'auth': {}, 'config': {'flags': 65544}}
         for channel in channels:
+            if channel == 'config':
+                payload = {'event': 'conf'}
+                payload.update(configs[channel])
+                self.send(**payload)
+                continue
             for pair in pairs:
                 if isinstance(configs[channel], list):
                     for config in configs[channel]:
@@ -481,7 +487,7 @@ class WebSocketConnection(Process):
                     if channel == 'auth':
                         self.send(api_key=self.key, secret=self.secret, auth=True)
                     else:
-                        payload = {'channel': channel, 'event': 'subscribe'}
+                        payload = {'channel': channel, 'event': 'subscribe', 'symbol': pair}
                         payload.update(configs[channel])
                         self.send(**payload)
 
@@ -489,12 +495,20 @@ class WebSocketConnection(Process):
 if __name__ == '__main__':
     logging.basicConfig(filename='zmq.log', filemode='w+', level=logging.DEBUG)
 
-    ctx = zmq.Context()
+    ctx = zmq.Context().instance()
+
+    c = WebSocketConnection(zmq_addr='tcp://*:66668', ctx=ctx, log_level=logging.DEBUG)
+
     sock = ctx.socket(zmq.SUB)
-    sock.connect('tcp://127.0.0.1:6843')
     sock.setsockopt(zmq.SUBSCRIBE, b'')
-    c = WebSocketConnection(zmq_addr='tcp://127.0.0.1:6843', log_level=logging.DEBUG)
+    sock.connect('tcp://localhost:66668')
+
     c.start()
     while True:
-        frames = sock.recv_multipart()
-        print(frames)
+        try:
+            frames = sock.recv_multipart()
+            print(frames)
+        except KeyboardInterrupt:
+            c.disconnect()
+            sock.close()
+            ctx.destroy()
