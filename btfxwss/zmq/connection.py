@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 class WebSocketConnection(Process):
-    """Websocket Connection Thread
+    """Websocket Connection Process
 
     Inspired heavily by ekulyk's PythonPusherClient Connection Class
     https://github.com/ekulyk/PythonPusherClient/blob/master/pusherclient/connection.py
@@ -45,7 +45,15 @@ class WebSocketConnection(Process):
         :param api_secret: API secret
         """
         # Channel labels for subscriptions
-        self.channels = {}
+        self.channels = {'0': 'account'}
+        self.private_channels = {'os': 'Orders', 'ps': 'Positions', 'hos': 'Historical Orders',
+                                 'hts': 'Trades', 'fls': 'Loans', 'te': 'Trades', 'tu': 'Trades',
+                                 'ws': 'Wallets', 'bu': 'Balance Info', 'wu': 'Wallets',
+                                 'miu': 'Margin Info', 'fos': 'Offers', 'fiu': 'Funding Info',
+                                 'fcs': 'Credits', 'hfos': 'Historical Offers',
+                                 'hfcs': 'Historical Credits', 'hfls': 'Historical Loans',
+                                 'htfs': 'Funding Trades', 'n': 'Notifications', 'on': 'Order New',
+                                 'ou': 'Order Update', 'oc': 'Order Cancel'}
 
         # Authentication details
         self.key = api_key
@@ -97,10 +105,7 @@ class WebSocketConnection(Process):
         self.daemon = True
 
     def disconnect(self):
-        """Disconnects from the websocket connection and joins the Process.
-
-        :return:
-        """
+        """Disconnects from the websocket connection and joins the Process."""
         self.log.debug("disconnect(): Disconnecting from API..")
         self.reconnect_required.clear()
         self.disconnect_called.set()
@@ -109,10 +114,7 @@ class WebSocketConnection(Process):
         self.join(timeout=1)
 
     def reconnect(self):
-        """Issues a reconnection by setting the reconnect_required event.
-
-        :return:
-        """
+        """Issue a reconnection by setting the reconnect_required event."""
         # Reconnect attempt at self.reconnect_interval
         self.log.debug("reconnect(): Initialzion reconnect sequence..")
         self.connected.clear()
@@ -121,10 +123,7 @@ class WebSocketConnection(Process):
             self.socket.close()
 
     def _connect(self):
-        """Creates a websocket connection.
-
-        :return:
-        """
+        """Create a websocket connection."""
         self.log.debug("_connect(): Initializing Connection..")
         self.socket = websocket.WebSocketApp(
             self.url,
@@ -156,18 +155,12 @@ class WebSocketConnection(Process):
         self.ctx.destroy()
 
     def run(self):
-        """Main method of Thread.
-
-        :return:
-        """
+        """Run process."""
         self.log.debug("run(): Starting up..")
         self._connect()
 
     def _on_message(self, ws, message):
-        """Handles and passes received data to the appropriate handlers.
-
-        :return:
-        """
+        """Handle and pass received data to the appropriate handlers."""
         self._stop_timers()
 
         raw, received_at = message, time.time()
@@ -195,11 +188,13 @@ class WebSocketConnection(Process):
         self._start_timers()
 
     def _on_close(self, ws, *args):
+        """Call methods upon closing of connection."""
         self.log.info("Connection closed")
         self.connected.clear()
         self._stop_timers()
 
     def _on_open(self, ws):
+        """Call methods upon opening of connection."""
         self.log.info("Connection opened")
         self.connected.set()
         self.send_ping()
@@ -209,15 +204,13 @@ class WebSocketConnection(Process):
         self._subscribe()
 
     def _on_error(self, ws, error):
+        """Handle websocket errors."""
         self.log.info("Connection Error - %s", error)
         self.reconnect_required.set()
         self.connected.clear()
 
     def _stop_timers(self):
-        """Stops ping, pong and connection timers.
-
-        :return:
-        """
+        """Stop ping, pong and connection timers."""
         if self.ping_timer:
             self.ping_timer.cancel()
 
@@ -229,10 +222,7 @@ class WebSocketConnection(Process):
         self.log.debug("_stop_timers(): Timers stopped.")
 
     def _start_timers(self):
-        """Resets and starts timers for API data and connection.
-
-        :return:
-        """
+        """Reset and start timers for API data and connection."""
         self.log.debug("_start_timers(): Resetting timers..")
         self._stop_timers()
 
@@ -246,20 +236,14 @@ class WebSocketConnection(Process):
         self.connection_timer.start()
 
     def send_ping(self):
-        """Sends a ping message to the API and starts pong timers.
-
-        :return:
-        """
+        """Send a ping message to the API and starts pong timers."""
         self.log.debug("send_ping(): Sending ping to API..")
         self.socket.send(json.dumps({'event': 'ping'}))
         self.pong_timer = Timer(self.pong_timeout, self._check_pong)
         self.pong_timer.start()
 
     def _check_pong(self):
-        """Checks if a Pong message was received.
-
-        :return:
-        """
+        """Check if a Pong message was received."""
         self.pong_timer.cancel()
         if self.pong_received:
             self.log.debug("_check_pong(): Pong received in time.")
@@ -269,7 +253,7 @@ class WebSocketConnection(Process):
                            "Issuing reconnect..")
             self.reconnect()
 
-    def send(self,api_key=None, secret=None, list_data=None, auth=False, **kwargs):
+    def send(self, api_key=None, secret=None, list_data=None, auth=False, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
@@ -293,60 +277,48 @@ class WebSocketConnection(Process):
         except websocket.WebSocketConnectionClosedException:
             self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
 
-    def pass_to_client(self, event, data, *args):
-        """Passes data up to the client via a Queue().
+    def pass_to_client(self, chan_id, data, ts):
+        """Send data via ZMQ socket as multipart message.
 
-        :param event:
-        :param data:
-        :param args:
+        :param chan_id: channel id to post this data on
+        :param data: payload to relay
+        :param ts: timestamp at which this data was received
         :return:
         """
-        pass
+        channel = self.channels[chan_id]
+        if chan_id == '0':
+            channel += '/' + data[0]
+
+        frames = (channel, data, ts)
+
+        self.publisher.send_multipart(frames)
 
     def _connection_timed_out(self):
-        """Issues a reconnection if the connection timed out.
-
-        :return:
-        """
+        """Issue a reconnection if the connection timed out."""
         self.log.debug("_connection_timed_out(): Fired! Issuing reconnect..")
         self.reconnect()
 
     def _pause(self):
-        """Pauses the connection.
-
-        :return:
-        """
+        """Pause the connection."""
         self.log.debug("_pause(): Setting paused() Flag!")
         self.paused.set()
 
     def _unpause(self):
-        """Unpauses the connection.
-
-        Send a message up to client that he should re-subscribe to all
-        channels.
-
-        :return:
-        """
+        """Unpause the connection and resubscribe."""
         self.log.debug("_unpause(): Clearing paused() Flag!")
         self.paused.clear()
         self.log.debug("_unpause(): Re-subscribing softly..")
         self._subscribe()
 
     def _heartbeat_handler(self):
-        """Handles heartbeat messages.
-
-        :return:
-        """
+        """Handles heartbeat messages."""
         # Restart our timers since we received some data
         self.log.debug("_heartbeat_handler(): Received a heart beat "
                        "from connection!")
         self._start_timers()
 
     def _pong_handler(self):
-        """Handle a pong response.
-
-        :return:
-        """
+        """Handle a pong response."""
         # We received a Pong response to our Ping!
         self.log.debug("_pong_handler(): Received a Pong message!")
         self.pong_received = True
@@ -357,8 +329,8 @@ class WebSocketConnection(Process):
         System messages include everything that arrives as a dict,
         or a list containing a heartbeat.
 
-        :param data:
-        :param ts:
+        :param data: data to process
+        :param ts: timestamp at which this data was received
         :return:
         """
         log.debug("_system_handler(): Received a system message: %s", data)
@@ -389,9 +361,9 @@ class WebSocketConnection(Process):
         Takes care of setting up new channel labels to broadcast new subscription under, or
         removes them if the response was a confirmation of unsubscribing.
 
-        :param event:
-        :param data:
-        :param ts:
+        :param event: event to handle
+        :param data: payload to process
+        :param ts: timetamp at which the data was received
         :return:
         """
         self.log.debug("_response_handler(): Processing event %s and related data (%s) ..",
@@ -440,12 +412,7 @@ class WebSocketConnection(Process):
             self.log.info("_response_handler(): Authentication deactivated: %s", data)
 
     def _info_handler(self, data):
-        """Handles INFO messages from the API and issues relevant actions.
-
-        :param data:
-        :param ts:
-        :return:
-        """
+        """Handles INFO messages from the API and issues relevant actions."""
         codes = {'20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
         info_message = {'20051': 'Stop/Restart websocket server '
@@ -458,16 +425,11 @@ class WebSocketConnection(Process):
             self.log.info(info_message[data['code']])
             codes[data['code']]()
         except KeyError:
-            self.log.warning("_info_handler(): Unkown message format received: %s", data)
+            self.log.warning("_info_handler(): Unknown message format received: %s", data)
             return
 
     def _error_handler(self, data):
-        """Handles Error messages and logs them accordingly.
-
-        :param data:
-        :param ts:
-        :return:
-        """
+        """Handles Error messages and logs them accordingly."""
         errors = {10000: 'Unknown event',
                   10001: 'Unknown pair',
                   10300: 'Subscription Failed (generic)',
@@ -484,22 +446,15 @@ class WebSocketConnection(Process):
             self.reconnect()
 
     def _data_handler(self, data, ts):
-        """Handles data messages by passing them up to the client.
-
-        :param data:
-        :param ts:
-        :return:
-        """
+        """Handles data messages by passing them up to the client."""
         # Pass the data up to the Client
         log.debug("_data_handler(): Passing %s to client..",
                   data)
-        self.pass_to_client('data', data, ts)
+        chan_id, *data = data
+        self.pass_to_client(chan_id, data, ts)
 
     def _subscribe(self):
-        """Subscribes to all available channels.
-
-        :return: None
-        """
+        """Subscribe to all available channels."""
         channels = ['config', 'ticker', 'trades', 'book', 'candles']
         if self.key and self.secret:
             channels.append('auth')
