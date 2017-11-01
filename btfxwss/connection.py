@@ -251,7 +251,7 @@ class WebSocketConnection(Thread):
                            "Issuing reconnect..")
             self.reconnect()
 
-    def send(self,api_key=None, secret=None, list_data=None, auth=False, **kwargs):
+    def send(self, api_key=None, secret=None, list_data=None, auth=False, **kwargs):
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
@@ -361,7 +361,7 @@ class WebSocketConnection(Thread):
             self._error_handler(data)
         elif event in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
             self.log.debug("_system_handler(): Distributing %s to "
-                      "_response_handler..", data)
+                           "_response_handler..", data)
             self._response_handler(event, data, ts)
         else:
             self.log.error("Unhandled event: %s, data: %s", event, data)
@@ -375,8 +375,7 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        self.log.debug("_response_handler(): Passing %s to client..",
-                  data)
+        self.log.debug("_response_handler(): Passing %s to client..", data)
         self.pass_to_client(event, data, ts)
 
     def _info_handler(self, data):
