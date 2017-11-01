@@ -114,7 +114,7 @@ class QueueProcessor(Thread):
                     self._response_handlers[dtype](dtype, data, ts)
                 except KeyError:
                     self.log.error("Dtype '%s' does not have a response "
-                                   "handler!", dtype)
+                                   "handler! (%s)", dtype, message)
             elif dtype == 'data':
                 try:
                     channel_id = data[0]
