@@ -492,7 +492,6 @@ class BtfxWss:
         """
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
-
         self.channel_configs['auth'] = {'api_key': self.key, 'secret': self.secret}
         self.conn.send(api_key=self.key, secret=self.secret, auth=True)
 
