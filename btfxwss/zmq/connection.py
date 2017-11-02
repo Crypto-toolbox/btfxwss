@@ -497,6 +497,66 @@ class WebSocketConnection(Thread):
                         payload.update(configs[channel])
                         self.send(**payload)
 
+    @staticmethod
+    def _prep_auth_payload(channel, data):
+        """Generate a payload to send to API."""
+        return [0, channel, None, data]
+
+    def new_order(self, **options):
+        """Generate a new order.
+
+        See the Bitfinex documentation for option references:
+            https://bitfinex.readme.io/v2/reference#ws-input
+
+        :param options: Order options
+        :return:
+        """
+        self.send(list_data=self._prep_auth_payload('on', options))
+
+    def cancel_order(self, **options):
+        """Cancel an order.
+
+        See the Bitfinex documentation for option references:
+            https://bitfinex.readme.io/v2/reference#ws-input
+
+        :param options: Order options
+        :return:
+        """
+        self.send(list_data=self._prep_auth_payload('oc', options))
+
+    def cancel_multi_orders(self, **options):
+        """Cancel multiple orders.
+
+        See the Bitfinex documentation for option references:
+            https://bitfinex.readme.io/v2/reference#ws-input
+
+        :param options: Order options
+        :return:
+        """
+        self.send(list_data=self._prep_auth_payload('oc_multi', options))
+
+    def multi_op_orders(self, **options):
+        """Execute multiple order operations.
+
+        See the Bitfinex documentation for option references:
+            https://bitfinex.readme.io/v2/reference#ws-input
+
+        :param options: Order options
+        :return:
+        """
+        self.send(list_data=self._prep_auth_payload('ox_multi', options))
+
+    def calc(self, **options):
+        """Execute a calculation command.
+
+        See the Bitfinex documentation for option references:
+            https://bitfinex.readme.io/v2/reference#ws-input
+
+        :param options: Calculation options.
+        :return:
+        """
+        self.send(list_data=self._prep_auth_payload('calc', options))
+
 
 if __name__ == '__main__':
     logging.basicConfig(filename='zmq.log', filemode='w+', level=logging.DEBUG)
