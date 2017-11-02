@@ -5,7 +5,8 @@ import time
 import ssl
 import hashlib
 import hmac
-from multiprocessing import Event, Process
+#from multiprocessing import Event, Process
+from threading import Thread, Event
 from threading import Timer
 from collections import OrderedDict
 
@@ -20,7 +21,7 @@ import requests
 log = logging.getLogger(__name__)
 
 
-class WebSocketConnection(Process):
+class WebSocketConnection(Thread):
     """Websocket Connection Process
 
     Inspired heavily by ekulyk's PythonPusherClient Connection Class
@@ -101,8 +102,13 @@ class WebSocketConnection(Process):
         self.log.setLevel(level=log_level if log_level else logging.INFO)
 
         # Call init of Thread and pass remaining args and kwargs
-        Process.__init__(self)
+        Thread.__init__(self)
         self.daemon = True
+
+    @property
+    def channels(self):
+        """Return a list of all available channels."""
+        return [self.channels[chan_id] for chan_id in self.channels]
 
     def disconnect(self):
         """Disconnects from the websocket connection and joins the Process."""
