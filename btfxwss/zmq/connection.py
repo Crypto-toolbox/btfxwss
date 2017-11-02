@@ -578,3 +578,4 @@ if __name__ == '__main__':
             c.disconnect()
             sock.close()
             ctx.destroy()
+            break
