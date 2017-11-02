@@ -46,7 +46,7 @@ class WebSocketConnection(Thread):
         :param api_secret: API secret
         """
         # Channel labels for subscriptions
-        self.channels = {'0': 'account'}
+        self._channels = {'0': 'account'}
         self.private_channels = {'os': 'Orders', 'ps': 'Positions', 'hos': 'Historical Orders',
                                  'hts': 'Trades', 'fls': 'Loans', 'te': 'Trades', 'tu': 'Trades',
                                  'ws': 'Wallets', 'bu': 'Balance Info', 'wu': 'Wallets',
@@ -108,7 +108,7 @@ class WebSocketConnection(Thread):
     @property
     def channels(self):
         """Return a list of all available channels."""
-        return [self.channels[chan_id] for chan_id in self.channels]
+        return [self._channels[chan_id] for chan_id in self._channels]
 
     def disconnect(self):
         """Disconnects from the websocket connection and joins the Process."""
@@ -293,7 +293,7 @@ class WebSocketConnection(Thread):
         :param ts: timestamp at which this data was received
         :return:
         """
-        channel = self.channels[chan_id]
+        channel = self._channels[chan_id]
         if chan_id == '0':
             channel += '/' + data[0]
 
@@ -395,15 +395,15 @@ class WebSocketConnection(Thread):
                     else:
                         config = 'aggregated'
 
-            self.channels[data['chanId']] = data['channel'] + '/' + sym
+            self._channels[data['chanId']] = data['channel'] + '/' + sym
             if config:
-                self.channels[data['chanId']] += '/' + config
+                self._channels[data['chanId']] += '/' + config
             self.log.info("_response_handler(): Registered new channel ID %s as channel %s",
-                          data['chanId'], self.channels[data['chanId']])
+                          data['chanId'], self._channels[data['chanId']])
 
         elif event == 'unsubscribed':
             try:
-                self.channels.pop(data['chanId'])
+                self._channels.pop(data['chanId'])
             except KeyError:
                 self.log.warning("_response_handler(): Attempt to remove channel ID %s from self."
                                  "channels failed: No such channel ID was registered!",
