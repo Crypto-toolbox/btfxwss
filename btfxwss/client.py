@@ -484,8 +484,8 @@ class BtfxWss:
         """
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
-        self.channel_configs['auth'] = {'key': self.key, 'secret': self.secret}
-        self.conn.send(key=self.key, secret=self.secret, auth=True)
+        self.channel_configs['auth'] = {'api_key': self.key, 'secret': self.secret}
+        self.conn.send(api_key=self.key, secret=self.secret, auth=True)
 
     @is_connected
     def new_order(self, **order_settings):
