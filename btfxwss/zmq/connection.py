@@ -20,6 +20,8 @@ import requests
 # Init Logging Facilities
 log = logging.getLogger(__name__)
 
+ZMQ_CONNECTION = None
+
 
 class WebSocketConnection(Thread):
     """Websocket Connection Process
@@ -54,7 +56,7 @@ class WebSocketConnection(Thread):
                                  'fcs': 'Credits', 'hfos': 'Historical Offers',
                                  'hfcs': 'Historical Credits', 'hfls': 'Historical Loans',
                                  'htfs': 'Funding Trades', 'n': 'Notifications', 'on': 'Order New',
-                                 'ou': 'Order Update', 'oc': 'Order Cancel'}
+                                 'ou': 'Order Update', 'oc': 'Order Cancel', 'ats': 'ATS'}
 
         # Authentication details
         self.key = api_key
