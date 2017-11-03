@@ -86,7 +86,8 @@ class QueueProcessor(Thread):
                                       'n': 'Notifications',
                                       'on': 'Order New',
                                       'ou': 'Order Update',
-                                      'oc': 'Order Cancel'}
+                                      'oc': 'Order Cancel',
+                                      'ats': 'ATS'}
 
     def join(self, timeout=None):
         """Set sentinel for run() method and join thread.
