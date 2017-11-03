@@ -231,6 +231,15 @@ class BtfxWss:
         self.conn.disconnect()
         self.queue_processor.join()
 
+    def reset(self):
+        """Reset the client.
+
+        :return:
+        """
+        self.conn.reconnect()
+        for q in self.channel_configs:
+            self.conn.send(**q)
+
     ##########################
     # Data Retrieval Methods #
     ##########################

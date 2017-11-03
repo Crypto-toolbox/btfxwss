@@ -27,7 +27,7 @@ class WebSocketConnection(Thread):
     It handles all low-level system messages, such a reconnects, pausing of
     activity and continuing of activity.
     """
-    def __init__(self, *args, url=None, timeout=None,
+    def __init__(self, *args, url=None, timeout=None, sslopt=None,
                  reconnect_interval=None, log_level=None, **kwargs):
         """Initialize a WebSocketConnection Instance.
 
@@ -47,6 +47,7 @@ class WebSocketConnection(Thread):
         # Connection Settings
         self.socket = None
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
+        self.sslopt = sslopt if sslopt else {}
 
         # Dict to store all subscribe commands for reconnects
         self.channel_configs = OrderedDict()
@@ -119,11 +120,12 @@ class WebSocketConnection(Thread):
             on_close=self._on_close
         )
 
-        ssl_defaults = ssl.get_default_verify_paths()
-        sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
+        if 'ca_certs' not in self.sslopt.keys():
+            ssl_defaults = ssl.get_default_verify_paths()
+            self.sslopt['ca_certs'] = ssl_defaults.cafile
 
         self.log.debug("_connect(): Starting Connection..")
-        self.socket.run_forever(sslopt=sslopt_ca_certs)
+        self.socket.run_forever(sslopt=self.sslopt)
 
         while self.reconnect_required.is_set():
             if not self.disconnect_called.is_set():
@@ -135,7 +137,7 @@ class WebSocketConnection(Thread):
                 # We need to set this flag since closing the socket will
                 # set it to False
                 self.socket.keep_running = True
-                self.socket.run_forever(sslopt=sslopt_ca_certs)
+                self.socket.run_forever(sslopt=self.sslopt)
 
     def run(self):
         """Main method of Thread.

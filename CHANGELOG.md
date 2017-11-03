@@ -1,4 +1,4 @@
-# 1.1.2
+# 1.1.4
 
 ## Fixed
 - If a connection drops, the client automatically resubscribes to channels
@@ -6,7 +6,7 @@
 in variable naming
 - Fixed example in README.md
 - Added build state in README
-
+- Added option to pass custom SSL ops to websocket
 ## Changed
 - prioritizing symbol over pair now, when creating channel identifier
 
