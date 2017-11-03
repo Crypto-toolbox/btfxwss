@@ -90,6 +90,30 @@ class BtfxWss:
         :return: Queue()
         """
         return self.queue_processor.account['Positions']
+    
+    @property
+    def positions_new(self):
+        """Return queue containing new positions associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Position New']
+
+    @property
+    def positions_update(self):
+        """Return queue containing position updates associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Position Update']
+
+    @property
+    def positions_cancel(self):
+        """Return queue containing position cancellations associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Position Cancel']
 
     @property
     def historical_orders(self):
