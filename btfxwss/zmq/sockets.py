@@ -51,10 +51,15 @@ class BtfxWssSocket:
 
 
 class BtfxWssSocketThread(Thread, BtfxWssSocket):
+    """Creates a thread object which returns a Queue() upon calling its start method.
+
+    Data received is fed to this queue and can be read using Queue.get().
+
+    """
     def __init__(self, topics=None, ctx=None, queue=None, **kwargs):
         """Initialize the socket as a thread."""
         super(BtfxWssSocketThread, self).__init__(topics, ctx)
-        Thread.__init__(self, *args, **kwargs)
+        Thread.__init__(self, **kwargs)
         self.queue = queue or Queue()
         self.running = Event()
 
@@ -85,10 +90,15 @@ class BtfxWssSocketThread(Thread, BtfxWssSocket):
 
 
 class BtfxWssSocketProcess(mp.Process, BtfxWssSocket):
+    """Creates a Process object which returns a mp.Queue() upon calling its start method.
+
+    Data received is fed to this queue and can be read using mp.Queue.get().
+
+    """
     def __init__(self, topics=None, ctx=None, queue=None, **kwargs):
         """Initialize the socket as a process."""
         super(BtfxWssSocketProcess, self).__init__(topics, ctx)
-        mp.Process.__init__(self, *args, **kwargs)
+        mp.Process.__init__(self, **kwargs)
         self.queue = queue or mp.Queue()
         self.running = mp.Event()
 
