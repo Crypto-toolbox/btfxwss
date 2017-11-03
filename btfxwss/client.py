@@ -116,14 +116,6 @@ class BtfxWss:
         return self.queue_processor.account['Position Cancel']
 
     @property
-    def historical_orders(self):
-        """Return history of orders associated with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Orders']
-
-    @property
     def transactions(self):
         """Return history of trades associated with the user account.
 
@@ -138,15 +130,7 @@ class BtfxWss:
         :return: Queue()
         """
         return self.queue_processor.account['Loans']
-
-    @property
-    def historical_loans(self):
-        """Return history of loans associated with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Loans']
-
+    
     @property
     def wallets(self):
         """Return wallet balances associated with the user account.
@@ -180,14 +164,6 @@ class BtfxWss:
         return self.queue_processor.account['Offers']
 
     @property
-    def historical_offers(self):
-        """Return history of offers associated with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Offers']
-
-    @property
     def funding_info(self):
         """Return funding information associated with the user account.
 
@@ -202,14 +178,6 @@ class BtfxWss:
         :return: Queue()
         """
         return self.queue_processor.account['Credits']
-
-    @property
-    def historical_credits(self):
-        """Return history of credits associated with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Credits']
 
     @property
     def channel_directory(self):
@@ -234,6 +202,38 @@ class BtfxWss:
         :return: Queue()
         """
         return self.queue_processor.account['Notifications']
+    
+    # DEPRECATED FUNCTIONS
+    @property
+    def historical_credits(self):
+        """Return history of credits associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Credits']
+    
+    @property
+    def historical_offers(self):
+        """Return history of offers associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Offers']
+    
+    @property
+    def historical_loans(self):
+        """Return history of loans associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Loans']
+    @property
+    def historical_orders(self):
+        """Return history of orders associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Orders']
 
     ##############################################
     # Client Initialization and Shutdown Methods #
