@@ -1,3 +1,4 @@
+"""Provide Sockets for interfacing with the ZMQ publisher."""
 # Import Built-Ins
 import logging
 import zmq
@@ -13,6 +14,8 @@ log = logging.getLogger(__name__)
 
 
 class BtfxWssSocket:
+    """Basic ZMQ Socket to interface with the btfxWss publisher."""
+
     def __init__(self, address, topics=None, ctx=None):
         """Initialize a BtfxWssSocket."""
         self.ctx = ctx or zmq.Context.instance()
@@ -54,8 +57,8 @@ class BtfxWssSocketThread(Thread, BtfxWssSocket):
     """Creates a thread object which returns a Queue() upon calling its start method.
 
     Data received is fed to this queue and can be read using Queue.get().
-
     """
+
     def __init__(self, topics=None, ctx=None, queue=None, **kwargs):
         """Initialize the socket as a thread."""
         super(BtfxWssSocketThread, self).__init__(topics, ctx)
@@ -93,8 +96,8 @@ class BtfxWssSocketProcess(mp.Process, BtfxWssSocket):
     """Creates a Process object which returns a mp.Queue() upon calling its start method.
 
     Data received is fed to this queue and can be read using mp.Queue.get().
-
     """
+
     def __init__(self, topics=None, ctx=None, queue=None, **kwargs):
         """Initialize the socket as a process."""
         super(BtfxWssSocketProcess, self).__init__(topics, ctx)

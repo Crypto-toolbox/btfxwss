@@ -1,3 +1,4 @@
+"""Websocket App with a ZMQ publisher connected to it."""
 # Import Built-Ins
 import logging
 import json
@@ -5,7 +6,6 @@ import time
 import ssl
 import hashlib
 import hmac
-#from multiprocessing import Event, Process
 from threading import Thread, Event
 from threading import Timer
 from collections import OrderedDict
@@ -36,6 +36,7 @@ class WebSocketConnection(Thread):
     It handles all low-level system messages, such as reconnects, pausing of
     activity and continuing of activity.
     """
+
     def __init__(self, url=None, zmq_addr=None, timeout=None, reconnect_interval=None,
                  log_level=None, ctx=None, api_key=None, api_secret=None):
         """Initialize a WebSocketConnection Instance.
@@ -117,7 +118,7 @@ class WebSocketConnection(Thread):
         return [self._channels[chan_id] for chan_id in self._channels]
 
     def disconnect(self):
-        """Disconnects from the websocket connection and joins the Process."""
+        """Disconnect from the websocket connection and join the Process."""
         self.log.debug("disconnect(): Disconnecting from API..")
         self.reconnect_required.clear()
         self.disconnect_called.set()
@@ -369,7 +370,7 @@ class WebSocketConnection(Thread):
     """SYSTEM MESSAGE HANDLER."""
 
     def _system_handler(self, data, ts):
-        """Distributes system messages to the appropriate handler.
+        """Distribute system messages to the appropriate handler.
 
         System messages include everything that arrives as a dict,
         or a list containing a heartbeat.
@@ -401,7 +402,7 @@ class WebSocketConnection(Thread):
             self.log.error("Unhandled event: %s, data: %s", event, data)
 
     def _heartbeat_handler(self):
-        """Handles heartbeat messages."""
+        """Handle heartbeat messages."""
         # Restart our timers since we received some data
         self.log.debug("_heartbeat_handler(): Received a heart beat "
                        "from connection!")
@@ -414,7 +415,7 @@ class WebSocketConnection(Thread):
         self.pong_received = True
 
     def _info_handler(self, data):
-        """Handles INFO messages from the API and issues relevant actions."""
+        """Handle INFO messages from the API and issue relevant actions."""
         codes = {'20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
         info_message = {'20051': 'Stop/Restart websocket server '
@@ -431,7 +432,7 @@ class WebSocketConnection(Thread):
             return
 
     def _error_handler(self, data):
-        """Handles Error messages and logs them accordingly."""
+        """Handle Error messages and log them accordingly."""
         errors = {10000: 'Unknown event',
                   10001: 'Unknown pair',
                   10300: 'Subscription Failed (generic)',
@@ -512,7 +513,7 @@ class WebSocketConnection(Thread):
             self.log.info("_response_handler(): Authentication deactivated: %s", data)
 
     def _data_handler(self, data, ts):
-        """Handles data messages by passing them up to the client."""
+        """Handle data messages by passing them up to the client."""
         # Pass the data up to the Client
         chan_id, *data = data
         self.publish(chan_id, data, ts)
