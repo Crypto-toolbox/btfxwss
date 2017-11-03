@@ -485,6 +485,10 @@ class WebSocketConnection(Thread):
                 payload.update(configs[channel])
                 self.send(**payload)
                 continue
+            elif channel == 'auth':
+                self.send(api_key=self.key, secret=self.secret, auth=True)
+                continue
+
             for pair in pairs:
                 if isinstance(configs[channel], list):
                     for config in configs[channel]:
@@ -496,12 +500,9 @@ class WebSocketConnection(Thread):
                             payload['symbol'] = pair
                         self.send(**payload)
                 else:
-                    if channel == 'auth':
-                        self.send(api_key=self.key, secret=self.secret, auth=True)
-                    else:
-                        payload = {'channel': channel, 'event': 'subscribe', 'symbol': pair}
-                        payload.update(configs[channel])
-                        self.send(**payload)
+                    payload = {'channel': channel, 'event': 'subscribe', 'symbol': pair}
+                    payload.update(configs[channel])
+                    self.send(**payload)
 
     @staticmethod
     def _prep_auth_payload(channel, data):
