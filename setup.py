@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-setup(name='btfxwss', version='1.2.0b4', author='Nils Diefenbach',
+setup(name='btfxwss', version='1.2.0b5', author='Nils Diefenbach',
       author_email='23okrs20+pypi@mykolab.com',
       url="https://github.com/nlsdfnbch/bitfinex_wss", license='LICENCSE',
       packages=['btfxwss'], install_requires=['websocket-client'],
