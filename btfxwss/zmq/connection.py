@@ -24,12 +24,16 @@ ZMQ_CONNECTION = None
 
 
 class WebSocketConnection(Thread):
-    """Websocket Connection Process
+    """Websocket Connection Process.
+
+    Connects to all available channels of the Bitfinex Websocket API.
+
+    Default API version is 2.0 (Beta).
 
     Inspired heavily by ekulyk's PythonPusherClient Connection Class
     https://github.com/ekulyk/PythonPusherClient/blob/master/pusherclient/connection.py
 
-    It handles all low-level system messages, such a reconnects, pausing of
+    It handles all low-level system messages, such as reconnects, pausing of
     activity and continuing of activity.
     """
     def __init__(self, url=None, zmq_addr=None, timeout=None, reconnect_interval=None,
