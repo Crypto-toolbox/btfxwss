@@ -114,6 +114,78 @@ class BtfxWss:
         :return: Queue()
         """
         return self.queue_processor.account['Position Cancel']
+    
+    @property
+    def funding_offer_new(self):
+        """Return queue containing new funding offers associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Offer New']
+    
+    @property
+    def funding_offer_update(self):
+        """Return queue containing funding offer updates associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Offer Update']
+    
+    @property
+    def funding_offer_cancel(self):
+        """Return queue containing canceled funding offers associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Offer Cancel']
+    
+    @property
+    def funding_credit_new(self):
+        """Return queue containing new funding credit associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Credit New']
+    
+    @property
+    def funding_credit_update(self):
+        """Return queue containing funding credit updates associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Credit Update']
+    
+    @property
+    def funding_credit_cancel(self):
+        """Return queue containing canceled funding credit associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Credit Cancel']
+    
+    @property
+    def funding_loan_new(self):
+        """Return queue containing new funding loan associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Loan New']
+    
+    @property
+    def funding_loan_update(self):
+        """Return queue containing funding loan updates associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Loan Update']
+    
+    @property
+    def funding_loan_cancel(self):
+        """Return queue containing canceled funding loan associated with the user account.
+
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Loan Cancel']
 
     @property
     def transactions(self):
