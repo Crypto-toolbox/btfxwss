@@ -134,44 +134,19 @@ class WebSocketConnection(Thread):
         if self.socket:
             self.socket.close()
 
-    def _connect(self):
-        """Create a websocket connection."""
-        self.log.debug("_connect(): Initializing Connection..")
-        self.publisher = self.ctx.socket(zmq.PUB)
-        self.publisher.bind(self.zmq_addr)
-        self.socket = websocket.WebSocketApp(
-            self.url,
-            on_open=self._on_open,
-            on_message=self._on_message,
-            on_error=self._on_error,
-            on_close=self._on_close
-        )
-
-        ssl_defaults = ssl.get_default_verify_paths()
-        sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
-
-        self.log.debug("_connect(): Starting Connection..")
-        self.socket.run_forever(sslopt=sslopt_ca_certs)
-
-        while self.reconnect_required.is_set():
-            if not self.disconnect_called.is_set():
-                self.log.info("Attempting to connect again in %s seconds."
-                              % self.reconnect_interval)
-                self.state = "unavailable"
-                time.sleep(self.reconnect_interval)
-
-                # We need to set this flag since closing the socket will
-                # set it to False
-                self.socket.keep_running = True
-                self.socket.run_forever(sslopt=sslopt_ca_certs)
-        self.socket.close()
-        self.publisher.close()
-        self.ctx.destroy()
+    def send_ping(self):
+        """Send a ping message to the API and starts pong timers."""
+        self.log.debug("send_ping(): Sending ping to API..")
+        self.socket.send(json.dumps({'event': 'ping'}))
+        self.pong_timer = Timer(self.pong_timeout, self._check_pong)
+        self.pong_timer.start()
 
     def run(self):
         """Run process."""
         self.log.debug("run(): Starting up..")
         self._connect()
+
+    """WEBSOCKET APP MEETHODS."""
 
     def _on_message(self, ws, message):
         """Handle and pass received data to the appropriate handlers."""
@@ -223,6 +198,79 @@ class WebSocketConnection(Thread):
         self.reconnect_required.set()
         self.connected.clear()
 
+    """INTERNAL METHODS."""
+
+    def _connect(self):
+        """Create a websocket connection."""
+        self.log.debug("_connect(): Initializing Connection..")
+        self.publisher = self.ctx.socket(zmq.PUB)
+        self.publisher.bind(self.zmq_addr)
+        self.socket = websocket.WebSocketApp(
+            self.url,
+            on_open=self._on_open,
+            on_message=self._on_message,
+            on_error=self._on_error,
+            on_close=self._on_close
+        )
+
+        ssl_defaults = ssl.get_default_verify_paths()
+        sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
+
+        self.log.debug("_connect(): Starting Connection..")
+        self.socket.run_forever(sslopt=sslopt_ca_certs)
+
+        while self.reconnect_required.is_set():
+            if not self.disconnect_called.is_set():
+                self.log.info("Attempting to connect again in %s seconds."
+                              % self.reconnect_interval)
+                self.state = "unavailable"
+                time.sleep(self.reconnect_interval)
+
+                # We need to set this flag since closing the socket will
+                # set it to False
+                self.socket.keep_running = True
+                self.socket.run_forever(sslopt=sslopt_ca_certs)
+        self.socket.close()
+        self.publisher.close()
+        self.ctx.destroy()
+
+    def _subscribe(self):
+        """Subscribe to all available channels."""
+        channels = ['config', 'ticker', 'trades', 'book', 'candles']
+        if self.key and self.secret:
+            channels.append('auth')
+        pairs = requests.get('https://api.bitfinex.com/v1/symbols').json()
+        configs = {'ticker': {}, 'trades': {}, 'book': [{'prec': 'P0', 'length': 100},
+                                                        {'prec': 'R0', 'length': 100}],
+                   'candles': [{'key': '1m'}, {'key': '5m'}, {'key': '15m'}, {'key': '30m'},
+                               {'key': '1h'}, {'key': '3h'}, {'key': '6h'}, {'key': '12h'},
+                               {'key': '1D'}, {'key': '7D'}, {'key': '14D'}, {'key': '1M'}],
+                   'auth': {}, 'config': {'flags': 65544}}
+        for channel in channels:
+            if channel == 'config':
+                payload = {'event': 'conf'}
+                payload.update(configs[channel])
+                self._send(**payload)
+                continue
+            elif channel == 'auth':
+                self._send(api_key=self.key, secret=self.secret, auth=True)
+                continue
+
+            for pair in pairs:
+                if isinstance(configs[channel], list):
+                    for config in configs[channel]:
+                        payload = {'channel': channel, 'event': 'subscribe'}
+                        payload.update(config)
+                        if 'key' in payload:
+                            payload['key'] = 'trade:' + payload['key'] + ':t' + pair
+                        else:
+                            payload['symbol'] = pair
+                        self._send(**payload)
+                else:
+                    payload = {'channel': channel, 'event': 'subscribe', 'symbol': pair}
+                    payload.update(configs[channel])
+                    self._send(**payload)
+
     def _stop_timers(self):
         """Stop ping, pong and connection timers."""
         if self.ping_timer:
@@ -249,13 +297,6 @@ class WebSocketConnection(Thread):
                                       self._connection_timed_out)
         self.connection_timer.start()
 
-    def send_ping(self):
-        """Send a ping message to the API and starts pong timers."""
-        self.log.debug("send_ping(): Sending ping to API..")
-        self.socket.send(json.dumps({'event': 'ping'}))
-        self.pong_timer = Timer(self.pong_timeout, self._check_pong)
-        self.pong_timer.start()
-
     def _check_pong(self):
         """Check if a Pong message was received."""
         self.pong_timer.cancel()
@@ -267,8 +308,8 @@ class WebSocketConnection(Thread):
                            "Issuing reconnect..")
             self.reconnect()
 
-    def send(self, api_key=None, secret=None, list_data=None, auth=False, **kwargs):
-        """Sends the given Payload to the API via the websocket connection.
+    def _send(self, api_key=None, secret=None, list_data=None, auth=False, **kwargs):
+        """Send the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
         :return:
@@ -285,13 +326,13 @@ class WebSocketConnection(Thread):
             payload = json.dumps(list_data)
         else:
             payload = json.dumps(kwargs)
-        self.log.debug("send(): Sending payload to API: %s", payload)
+        self.log.debug("_send(): Sending payload to API: %s", payload)
         try:
             self.socket.send(payload)
         except websocket.WebSocketConnectionClosedException:
-            self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
+            self.log.error("_send(): Did not send out payload %s - client not connected. ", kwargs)
 
-    def pass_to_client(self, chan_id, data, ts):
+    def publish(self, chan_id, data, ts):
         """Send data via ZMQ socket as multipart message.
 
         :param chan_id: channel id to post this data on
@@ -304,7 +345,7 @@ class WebSocketConnection(Thread):
             channel += '/' + data[0]
 
         frames = [json.dumps(x).encode() for x in (channel, data, ts)]
-        self.log.info("pass_to_client(): Sending frames %s from address %s..",
+        self.log.info("publish(): Sending frames %s from address %s..",
                       frames, self.zmq_addr)
         self.publisher.send_multipart(frames)
 
@@ -325,18 +366,7 @@ class WebSocketConnection(Thread):
         self.log.debug("_unpause(): Re-subscribing softly..")
         self._subscribe()
 
-    def _heartbeat_handler(self):
-        """Handles heartbeat messages."""
-        # Restart our timers since we received some data
-        self.log.debug("_heartbeat_handler(): Received a heart beat "
-                       "from connection!")
-        self._start_timers()
-
-    def _pong_handler(self):
-        """Handle a pong response."""
-        # We received a Pong response to our Ping!
-        self.log.debug("_pong_handler(): Received a Pong message!")
-        self.pong_received = True
+    """SYSTEM MESSAGE HANDLER."""
 
     def _system_handler(self, data, ts):
         """Distributes system messages to the appropriate handler.
@@ -369,6 +399,53 @@ class WebSocketConnection(Thread):
             self._response_handler(event, data, ts)
         else:
             self.log.error("Unhandled event: %s, data: %s", event, data)
+
+    def _heartbeat_handler(self):
+        """Handles heartbeat messages."""
+        # Restart our timers since we received some data
+        self.log.debug("_heartbeat_handler(): Received a heart beat "
+                       "from connection!")
+        self._start_timers()
+
+    def _pong_handler(self):
+        """Handle a pong response."""
+        # We received a Pong response to our Ping!
+        self.log.debug("_pong_handler(): Received a Pong message!")
+        self.pong_received = True
+
+    def _info_handler(self, data):
+        """Handles INFO messages from the API and issues relevant actions."""
+        codes = {'20051': self.reconnect, '20060': self._pause,
+                 '20061': self._unpause}
+        info_message = {'20051': 'Stop/Restart websocket server '
+                                 '(please try to reconnect)',
+                        '20060': 'Refreshing data from the trading engine; '
+                                 'please pause any acivity.',
+                        '20061': 'Done refreshing data from the trading engine.'
+                                 ' Re-subscription advised.'}
+        try:
+            self.log.info(info_message[data['code']])
+            codes[data['code']]()
+        except KeyError:
+            self.log.warning("_info_handler(): Unknown message format received: %s", data)
+            return
+
+    def _error_handler(self, data):
+        """Handles Error messages and logs them accordingly."""
+        errors = {10000: 'Unknown event',
+                  10001: 'Unknown pair',
+                  10300: 'Subscription Failed (generic)',
+                  10301: 'Already Subscribed',
+                  10302: 'Unknown channel',
+                  10400: 'Subscription Failed (generic)',
+                  10401: 'Not subscribed',
+                  }
+        try:
+            self.log.error(errors[data['code']])
+        except KeyError:
+            self.log.error("Received unknown error Code in message %s! "
+                           "Reconnecting..", data)
+            self.reconnect()
 
     def _response_handler(self, event, data, ts):
         """Handle server responses.
@@ -421,88 +498,26 @@ class WebSocketConnection(Thread):
             self.log.info("_response_handler(): Configuration set: %s", data)
         elif event == 'auth':
             if data['status'] == 'OK':
+                self._channels[0] = 'account'
                 self.log.info("_response_handler(): Authentication activated: %s", data)
             else:
                 self.log.error("_response_handler(): Authentication failed! %s", data)
         elif event == 'unauth':
+            try:
+                self._channels.pop(0)
+            except KeyError:
+                self.log.warning("_response_handler(): Attempt to remove channel ID %s from self."
+                                 "channels failed: No such channel ID was registered!",
+                                 data['chanId'])
             self.log.info("_response_handler(): Authentication deactivated: %s", data)
-
-    def _info_handler(self, data):
-        """Handles INFO messages from the API and issues relevant actions."""
-        codes = {'20051': self.reconnect, '20060': self._pause,
-                 '20061': self._unpause}
-        info_message = {'20051': 'Stop/Restart websocket server '
-                                 '(please try to reconnect)',
-                        '20060': 'Refreshing data from the trading engine; '
-                                 'please pause any acivity.',
-                        '20061': 'Done refreshing data from the trading engine.'
-                                 ' Re-subscription advised.'}
-        try:
-            self.log.info(info_message[data['code']])
-            codes[data['code']]()
-        except KeyError:
-            self.log.warning("_info_handler(): Unknown message format received: %s", data)
-            return
-
-    def _error_handler(self, data):
-        """Handles Error messages and logs them accordingly."""
-        errors = {10000: 'Unknown event',
-                  10001: 'Unknown pair',
-                  10300: 'Subscription Failed (generic)',
-                  10301: 'Already Subscribed',
-                  10302: 'Unknown channel',
-                  10400: 'Subscription Failed (generic)',
-                  10401: 'Not subscribed',
-                  }
-        try:
-            self.log.error(errors[data['code']])
-        except KeyError:
-            self.log.error("Received unknown error Code in message %s! "
-                           "Reconnecting..", data)
-            self.reconnect()
 
     def _data_handler(self, data, ts):
         """Handles data messages by passing them up to the client."""
         # Pass the data up to the Client
         chan_id, *data = data
-        self.pass_to_client(chan_id, data, ts)
+        self.publish(chan_id, data, ts)
 
-    def _subscribe(self):
-        """Subscribe to all available channels."""
-        channels = ['config', 'ticker', 'trades', 'book', 'candles']
-        if self.key and self.secret:
-            channels.append('auth')
-        pairs = requests.get('https://api.bitfinex.com/v1/symbols').json()
-        configs = {'ticker': {}, 'trades': {}, 'book': [{'prec': 'P0', 'length': 100},
-                                                        {'prec': 'R0', 'length': 100}],
-                   'candles': [{'key': '1m'}, {'key': '5m'}, {'key': '15m'}, {'key': '30m'},
-                               {'key': '1h'}, {'key': '3h'}, {'key': '6h'}, {'key': '12h'},
-                               {'key': '1D'}, {'key': '7D'}, {'key': '14D'}, {'key': '1M'}],
-                   'auth': {}, 'config': {'flags': 65544}}
-        for channel in channels:
-            if channel == 'config':
-                payload = {'event': 'conf'}
-                payload.update(configs[channel])
-                self.send(**payload)
-                continue
-            elif channel == 'auth':
-                self.send(api_key=self.key, secret=self.secret, auth=True)
-                continue
-
-            for pair in pairs:
-                if isinstance(configs[channel], list):
-                    for config in configs[channel]:
-                        payload = {'channel': channel, 'event': 'subscribe'}
-                        payload.update(config)
-                        if 'key' in payload:
-                            payload['key'] = 'trade:' + payload['key'] + ':t' + pair
-                        else:
-                            payload['symbol'] = pair
-                        self.send(**payload)
-                else:
-                    payload = {'channel': channel, 'event': 'subscribe', 'symbol': pair}
-                    payload.update(configs[channel])
-                    self.send(**payload)
+    """INPUT API METHODS."""
 
     @staticmethod
     def _prep_auth_payload(channel, data):
@@ -518,7 +533,7 @@ class WebSocketConnection(Thread):
         :param options: Order options
         :return:
         """
-        self.send(list_data=self._prep_auth_payload('on', options))
+        self._send(list_data=self._prep_auth_payload('on', options))
 
     def cancel_order(self, **options):
         """Cancel an order.
@@ -529,7 +544,7 @@ class WebSocketConnection(Thread):
         :param options: Order options
         :return:
         """
-        self.send(list_data=self._prep_auth_payload('oc', options))
+        self._send(list_data=self._prep_auth_payload('oc', options))
 
     def cancel_multi_orders(self, **options):
         """Cancel multiple orders.
@@ -540,7 +555,7 @@ class WebSocketConnection(Thread):
         :param options: Order options
         :return:
         """
-        self.send(list_data=self._prep_auth_payload('oc_multi', options))
+        self._send(list_data=self._prep_auth_payload('oc_multi', options))
 
     def multi_op_orders(self, **options):
         """Execute multiple order operations.
@@ -551,7 +566,7 @@ class WebSocketConnection(Thread):
         :param options: Order options
         :return:
         """
-        self.send(list_data=self._prep_auth_payload('ox_multi', options))
+        self._send(list_data=self._prep_auth_payload('ox_multi', options))
 
     def calc(self, **options):
         """Execute a calculation command.
@@ -562,7 +577,7 @@ class WebSocketConnection(Thread):
         :param options: Calculation options.
         :return:
         """
-        self.send(list_data=self._prep_auth_payload('calc', options))
+        self._send(list_data=self._prep_auth_payload('calc', options))
 
 
 if __name__ == '__main__':
