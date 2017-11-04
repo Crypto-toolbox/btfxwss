@@ -255,7 +255,6 @@ class QueueProcessor(Thread):
         :return:
         """
         self.log.debug("_handle_account: %s - %s - %s", dtype, data, ts)
-        # Channel ID is now redundant, just cut it off
         data = data[1:]
         entry = (data, ts)
         self.account.put(entry)
