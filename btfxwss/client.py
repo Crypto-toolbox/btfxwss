@@ -50,7 +50,7 @@ class BtfxWss:
     def channel_configs(self):
         return self.conn.channel_configs
 
-   @property
+    @property
     def orders(self):
         """Return queue containing open orders associated with the user account.
         
