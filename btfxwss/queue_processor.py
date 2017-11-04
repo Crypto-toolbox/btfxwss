@@ -83,7 +83,7 @@ class QueueProcessor(Thread):
                                       'hfcs': 'Historical Credits',
                                       'hfls': 'Historical Loans',
                                       'htfs': 'Funding Trades',
-                                      'n': 'Notifications',
+                                      'n': 'Notifications', 'ats': 'ATS',
                                       'on': 'Order New', 'ou': 'Order Update', 'oc': 'Order Cancel',
                                       'pn': 'Position New', 'pu': 'Position Update', 'pc': 'Position Cancel',
                                       'fon': 'Funding Offer New', 'fou': 'Funding Offer Update', 'foc': 'Funding Offer Cancel',
