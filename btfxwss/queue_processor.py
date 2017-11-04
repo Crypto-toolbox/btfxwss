@@ -43,8 +43,7 @@ class QueueProcessor(Thread):
                                'book': self._handle_book,
                                'raw_book': self._handle_raw_book,
                                'candles': self._handle_candles,
-                               'trades': self._handle_trades,
-                               'account': self._handle_account}
+                               'trades': self._handle_trades}
 
         # Assigns a channel id to a data handler method.
         self._registry = {}
@@ -62,7 +61,7 @@ class QueueProcessor(Thread):
         self.raw_books = defaultdict(Queue)
         self.trades = defaultdict(Queue)
         self.candles = defaultdict(Queue)
-        self.account = Queue()
+        self.account = defaultdict(Queue)
 
         # Sentinel Event to kill the thread
         self._stopped = Event()
@@ -70,6 +69,26 @@ class QueueProcessor(Thread):
         # Internal Logging facilities
         self.log = logging.getLogger(self.__module__)
         self.log.setLevel(level=logging.INFO if not log_level else log_level)
+
+        # Translation dict for Account channels
+        self.account_channel_names = {'os': 'Orders', 'ps': 'Positions',
+                                      'hos': 'Historical Orders',
+                                      'hts': 'Trades', 'fls': 'Loans',
+                                      'te': 'Trades', 'tu': 'Trades',
+                                      'ws': 'Wallets', 'bu': 'Balance Info',
+                                      'wu': 'Wallets',
+                                      'miu': 'Margin Info', 'fos': 'Offers',
+                                      'fiu': 'Funding Info',  'fcs': 'Credits',
+                                      'hfos': 'Historical Offers', 
+                                      'hfcs': 'Historical Credits',
+                                      'hfls': 'Historical Loans',
+                                      'htfs': 'Funding Trades',
+                                      'n': 'Notifications', 'ats': 'ATS',
+                                      'on': 'Order New', 'ou': 'Order Update', 'oc': 'Order Cancel',
+                                      'pn': 'Position New', 'pu': 'Position Update', 'pc': 'Position Cancel',
+                                      'fon': 'Funding Offer New', 'fou': 'Funding Offer Update', 'foc': 'Funding Offer Cancel',
+                                      'fcn': 'Funding Credit New', 'fcu': 'Funding Credit Update', 'fcc': 'Funding Offer Cancel',
+                                      'fln': 'Funding Loan New', 'flu': 'Funding Loan Update', 'flc': 'Funding Loan Cancel'}
 
     def join(self, timeout=None):
         """Set sentinel for run() method and join thread.
@@ -101,15 +120,19 @@ class QueueProcessor(Thread):
             elif dtype == 'data':
                 try:
                     channel_id = data[0]
-                    # Get channel type associated with this data to the
-                    # associated data type (from 'data' to
-                    # 'book', 'ticker' or similar
-                    channel_type, *_ = self.channel_directory[channel_id]
+                    if channel_id != 0:
+                        # Get channel type associated with this data to the
+                        # associated data type (from 'data' to
+                        # 'book', 'ticker' or similar
+                        channel_type, *_ = self.channel_directory[channel_id]
 
-                    # Run the associated data handler for this channel type.
-                    self._data_handlers[channel_type](channel_type, data, ts)
-                    # Update time stamps.
-                    self.update_timestamps(channel_id, ts)
+                        # Run the associated data handler for this channel type.
+                        self._data_handlers[channel_type](channel_type, data, ts)
+                        # Update time stamps.
+                        self.update_timestamps(channel_id, ts)
+                    else:
+                        # This is data from auth channel, call handler
+                        self._handle_account(data=data, ts=ts)
                 except KeyError:
                     self.log.error("Channel ID does not have a data handler! %s",
                                    message)
@@ -194,8 +217,8 @@ class QueueProcessor(Thread):
         channel_id = data.pop('chanId')
         user_id = data.pop('userId')
 
-        identifier = ('account', user_id)
-        self.channel_handlers[channel_id] = identifier
+        identifier = ('auth', user_id)
+        self.channel_handlers[identifier] = channel_id
         self.channel_directory[identifier] = channel_id
         self.channel_directory[channel_id] = identifier
 
@@ -225,7 +248,7 @@ class QueueProcessor(Thread):
                              "not present anymore.",
                              self.channel_directory[chan_id])
 
-    def _handle_account(self, dtype, data, ts):
+    def _handle_account(self, data, ts):
         """ Handles Account related data.
 
         translation table for channel names:
@@ -254,11 +277,11 @@ class QueueProcessor(Thread):
         :param ts:
         :return:
         """
-        self.log.debug("_handle_account: %s - %s - %s", dtype, data, ts)
-        # Channel ID is now redundant, just cut it off
-        data = data[1:]
+
+        chan_id, *data = data
+        channel_identifier = self.account_channel_names[data[0]]
         entry = (data, ts)
-        self.account.put(entry)
+        self.account[channel_identifier].put(entry)
 
     def _handle_ticker(self, dtype, data, ts):
         """Adds received ticker data to self.tickers dict, filed under its channel
@@ -272,6 +295,7 @@ class QueueProcessor(Thread):
         self.log.debug("_handle_ticker: %s - %s - %s", dtype, data, ts)
         channel_id, *data = data
         channel_identifier = self.channel_directory[channel_id]
+
         entry = (data, ts)
         self.tickers[channel_identifier].put(entry)
 
