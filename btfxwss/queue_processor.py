@@ -71,7 +71,7 @@ class QueueProcessor(Thread):
         self.log.setLevel(level=logging.INFO if not log_level else log_level)
 
         # Translation dict for Account channels
-        self.account_channel_names = {'os': 'Orders', 'ps': 'Positions',
+        self.account_channel_names ={'os': 'Orders', 'ps': 'Positions',
                                       'hos': 'Historical Orders',
                                       'hts': 'Trades', 'fls': 'Loans',
                                       'te': 'Trades', 'tu': 'Trades',
@@ -79,14 +79,16 @@ class QueueProcessor(Thread):
                                       'wu': 'Wallets',
                                       'miu': 'Margin Info', 'fos': 'Offers',
                                       'fiu': 'Funding Info',  'fcs': 'Credits',
-                                      'hfos': 'Historical Offers',
+                                      'hfos': 'Historical Offers', 
                                       'hfcs': 'Historical Credits',
                                       'hfls': 'Historical Loans',
                                       'htfs': 'Funding Trades',
-                                      'n': 'Notifications',
-                                      'on': 'Order New',
-                                      'ou': 'Order Update',
-                                      'oc': 'Order Cancel', 'ats': 'ATS'}
+                                      'n': 'Notifications', 'ats': 'ATS',
+                                      'on': 'Order New', 'ou': 'Order Update', 'oc': 'Order Cancel',
+                                      'pn': 'Position New', 'pu': 'Position Update', 'pc': 'Position Cancel',
+                                      'fon': 'Funding Offer New', 'fou': 'Funding Offer Update', 'foc': 'Funding Offer Cancel',
+                                      'fcn': 'Funding Credit New', 'fcu': 'Funding Credit Update', 'fcc': 'Funding Offer Cancel',
+                                      'fln': 'Funding Loan New', 'flu': 'Funding Loan Update', 'flc': 'Funding Loan Cancel'}
 
     def join(self, timeout=None):
         """Set sentinel for run() method and join thread.
