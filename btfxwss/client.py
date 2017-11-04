@@ -50,10 +50,10 @@ class BtfxWss:
     def channel_configs(self):
         return self.conn.channel_configs
 
-    @property
+        @property
     def orders(self):
         """Return queue containing open orders associated with the user account.
-
+        
         :return: Queue()
         """
         return self.queue_processor.account['Orders']
@@ -61,7 +61,7 @@ class BtfxWss:
     @property
     def orders_new(self):
         """Return queue containing new orders associated with the user account.
-
+        
         :return: Queue()
         """
         return self.queue_processor.account['Order New']
@@ -69,7 +69,7 @@ class BtfxWss:
     @property
     def orders_update(self):
         """Return queue containing order updates associated with the user account.
-
+        
         :return: Queue()
         """
         return self.queue_processor.account['Order Update']
@@ -77,7 +77,7 @@ class BtfxWss:
     @property
     def orders_cancel(self):
         """Return queue containing order cancellations associated with the user account.
-
+        
         :return: Queue()
         """
         return self.queue_processor.account['Order Cancel']
@@ -85,151 +85,228 @@ class BtfxWss:
     @property
     def positions(self):
         """Return queue containing open positions associated with the user
+        
         account.
-
         :return: Queue()
         """
         return self.queue_processor.account['Positions']
-
+    
     @property
-    def historical_orders(self):
-        """Return history of orders associated with the user account.
-
+    def positions_new(self):
+        """Return queue containing new positions associated with the user account.
+        
         :return: Queue()
         """
-        return self.queue_processor.account['Historical Orders']
+        return self.queue_processor.account['Position New']
+
+    @property
+    def positions_update(self):
+        """Return queue containing position updates associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Position Update']
+
+    @property
+    def positions_cancel(self):
+        """Return queue containing position cancellations associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Position Cancel']
+    
+    @property
+    def funding_offer_new(self):
+        """Return queue containing new funding offers associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Offer New']
+    
+    @property
+    def funding_offer_update(self):
+        """Return queue containing funding offer updates associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Offer Update']
+    
+    @property
+    def funding_offer_cancel(self):
+        """Return queue containing canceled funding offers associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Offer Cancel']
+    
+    @property
+    def funding_credit_new(self):
+        """Return queue containing new funding credit associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Credit New']
+    
+    @property
+    def funding_credit_update(self):
+        """Return queue containing funding credit updates associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Credit Update']
+    
+    @property
+    def funding_credit_cancel(self):
+        """Return queue containing canceled funding credit associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Credit Cancel']
+    
+    @property
+    def funding_loan_new(self):
+        """Return queue containing new funding loan associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Loan New']
+    
+    @property
+    def funding_loan_update(self):
+        """Return queue containing funding loan updates associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Loan Update']
+    
+    @property
+    def funding_loan_cancel(self):
+        """Return queue containing canceled funding loan associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Funding Loan Cancel']
 
     @property
     def transactions(self):
-        """Return history of trades associacted with the user account.
-
+        """Return history of trades associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Trades']
 
     @property
     def loans(self):
-        """Return current loans associacted with the user account.
-
+        """Return current loans associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Loans']
-
-    @property
-    def historical_loans(self):
-        """Return history of loans associacted with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Loans']
-
+    
     @property
     def wallets(self):
-        """Return wallet balances associacted with the user account.
-
+        """Return wallet balances associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Wallets']
 
     @property
     def balance_info(self):
-        """Return balance information associacted with the user account.
-
+        """Return balance information associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Balance Info']
 
     @property
     def margin_info(self):
-        """Return margin information associacted with the user account.
-
+        """Return margin information associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Margin Info']
 
     @property
     def offers(self):
-        """Return current offers associacted with the user account.
-
+        """Return current offers associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Offers']
 
     @property
-    def historical_offers(self):
-        """Return history of offers associacted with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Offers']
-
-    @property
     def funding_info(self):
-        """Return funding information associacted with the user account.
-
+        """Return funding information associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Funding Info']
 
     @property
     def credits(self):
-        """Return current credits associacted with the user account.
-
+        """Return current credits associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Credits']
 
     @property
-    def historical_credits(self):
-        """Return history of credits associacted with the user account.
-
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Credits']
-
-    @property
     def channel_directory(self):
         """Return channel directory of currently subscribed channels.
-
+        
         :return: Queue()
         """
         return self.queue_processor.channel_directory
 
     @property
     def funding_trades(self):
-        """Return funding trades associacted with the user account.
-
+        """Return funding trades associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Funding_trades']
 
     @property
     def notifications(self):
-        """Return notifications associacted with the user account.
-
+        """Return notifications associated with the user account.
+        
         :return: Queue()
         """
         return self.queue_processor.account['Notifications']
-
-    ##############################################
-    # Client Initialization and Shutdown Methods #
-    ##############################################
-
-    def start(self):
-        """Start the client.
-
-        :return:
+    
+    # DEPRECATED FUNCTIONS
+    @property
+    def historical_credits(self):
+        """Return history of credits associated with the user account.
+        
+        :return: Queue()
         """
-        self.conn.start()
-        self.queue_processor.start()
-
-    def stop(self):
-        """Stop the client.
-
-        :return:
+        return self.queue_processor.account['Historical Credits']
+    
+    @property
+    def historical_offers(self):
+        """Return history of offers associated with the user account.
+        
+        :return: Queue()
         """
-        self.conn.disconnect()
-        self.queue_processor.join()
+        return self.queue_processor.account['Historical Offers']
+    
+    @property
+    def historical_loans(self):
+        """Return history of loans associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Loans']
+    
+    @property
+    def historical_orders(self):
+        """Return history of orders associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Orders']
 
     ##########################
     # Data Retrieval Methods #
