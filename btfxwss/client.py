@@ -54,7 +54,7 @@ class BtfxWss:
     @property
     def channel_directory(self):
         """Return channel directory of currently subscribed channels.
-
+        
         :return: Queue()
         """
         return self.queue_processor.channel_directory
@@ -67,17 +67,33 @@ class BtfxWss:
         """Start the client.
 
         :return:
-        """
-        self.conn.start()
-        self.queue_processor.start()
 
-    def stop(self):
-        """Stop the client.
-
-        :return:
         """
-        self.conn.disconnect()
-        self.queue_processor.join()
+        return self.queue_processor.account['Historical Credits']
+    
+    @property
+    def historical_offers(self):
+        """Return history of offers associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Offers']
+    
+    @property
+    def historical_loans(self):
+        """Return history of loans associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Loans']
+    
+    @property
+    def historical_orders(self):
+        """Return history of orders associated with the user account.
+        
+        :return: Queue()
+        """
+        return self.queue_processor.account['Historical Orders']
 
     def reset(self):
         """Reset the client.

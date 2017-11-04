@@ -254,6 +254,7 @@ class WebSocketConnection(Thread):
             self.reconnect()
 
     def send(self, api_key=None, secret=None, list_data=None, auth=False, **kwargs):
+
         """Sends the given Payload to the API via the websocket connection.
 
         :param kwargs: payload paarameters as key=value pairs
