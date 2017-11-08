@@ -333,8 +333,8 @@ class BtfxWss:
         :return:
         """
         self.conn.reconnect()
-        for key, q in self.channel_configs:
-            self.conn.send(**q)
+        for key in self.channel_configs:
+            self.conn.send(**self.channel_configs[key])
 
     ##########################
     # Data Retrieval Methods #
