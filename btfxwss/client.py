@@ -333,7 +333,7 @@ class BtfxWss:
         :return:
         """
         self.conn.reconnect()
-        for q in self.channel_configs:
+        for key, q in self.channel_configs:
             self.conn.send(**q)
 
     ##########################
