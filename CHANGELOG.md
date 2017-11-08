@@ -9,6 +9,12 @@ in variable naming
 - Added option to pass custom SSL ops to websocket
 ## Changed
 - prioritizing symbol over pair now, when creating channel identifier
+- Account-related channels are now bundled into a single account queue, instead of each type
+of message put into its own queue.
+
+## Deprecated
+- The old btfwss client is now deprecated and will be removed in the next release - use the ZeroMQ
+implementation instead.
 
 
 # 1.1.1
