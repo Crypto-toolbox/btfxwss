@@ -1,5 +1,6 @@
 # Import Built-Ins
 import logging
+import time
 
 # Import Homebrew
 from btfxwss.connection import WebSocketConnection
@@ -95,14 +96,38 @@ class BtfxWss:
         """
         return self.queue_processor.account['Historical Orders']
 
+    ##############################################
+    # Client Initialization and Shutdown Methods #
+    ##############################################
+
+    def start(self):
+        """Start the client.
+
+        :return:
+        """
+        self.conn.start()
+        self.queue_processor.start()
+
+    def stop(self):
+        """Stop the client.
+
+        :return:
+        """
+        self.conn.disconnect()
+        self.queue_processor.join()
     def reset(self):
         """Reset the client.
 
         :return:
         """
         self.conn.reconnect()
-        for q in self.channel_configs:
-            self.conn.send(**q)
+        
+        while not self.conn.connected.is_set():
+            log.info("reset(): Waiting for connection to be set up..")
+            time.sleep(1)
+
+        for key in self.channel_configs:
+            self.conn.send(**self.channel_configs[key])
 
     ##########################
     # Data Retrieval Methods #
