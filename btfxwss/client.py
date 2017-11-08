@@ -1,5 +1,6 @@
 # Import Built-Ins
 import logging
+import time
 
 # Import Homebrew
 from btfxwss.connection import WebSocketConnection
@@ -333,6 +334,10 @@ class BtfxWss:
         :return:
         """
         self.conn.reconnect()
+        while not self.conn.connected.is_set():
+            log.info("reset(): Waiting for connection to be set up..")
+            time.sleep(1)
+
         for key in self.channel_configs:
             self.conn.send(**self.channel_configs[key])
 
