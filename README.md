@@ -1,12 +1,14 @@
-BTFXWSS
+BTFXWSS[![Build Status](https://travis-ci.org/nlsdfnbch/btfxwss.svg?branch=release-1.1.2)](https://travis-ci.org/nlsdfnbch/btfxwss)
 =======
 
 Client for Bitfinex Websocket API written in Python
 
 Currently supports all public endpoints; authenticated channels are a
-work in progress.
+work in progress, but are supported.
 
-Offers graceful exception handling of common server errors.
+Offers graceful exception handling of common server errors. Make sure you
+check the log messages and have proper logging enabled, as there are no
+exceptions thrown.
 
 Data is stored within `BtfxWss` as `Queue`s. There are convenience
 methods available to retrieve a queue for a given type. Consult
@@ -28,13 +30,12 @@ Usage
 =====
 
 ```python
-    
-    import logging 
+    import logging
+
     import time
 
     from btfxwss import BtfxWss
     
-    logging.basicConfig(level=logging.DEBUG, filename='test.log')
     log = logging.getLogger(__name__)
 
     fh = logging.FileHandler('test.log')
@@ -44,10 +45,11 @@ Usage
 
     log.addHandler(sh)
     log.addHandler(fh)
+    logging.basicConfig(level=logging.DEBUG, handlers=[fh, sh])
     
     wss = BtfxWss()
     wss.start()
-    
+
     while not wss.conn.connected.is_set():
         time.sleep(1)
     
@@ -78,6 +80,13 @@ Your help is required
 
 If you find any bugs, error or have feature requests, please don't hesitate to open an issue.
 Be as descriptive as possible, and I'll look into the matter as soon as I can.
+
+Looking for a REST client?
+==========================
+
+Checkout [`BitEx`](https://github.com/nlsdfnbch/bitex), a python-based Framework for connecting to a variety of Bitcoin
+exchanges, including `Bitfinex`!
+
 
 Thanks
 ======

@@ -47,210 +47,10 @@ class BtfxWss:
     ##############
     # Properties #
     ##############
+
     @property
     def channel_configs(self):
         return self.conn.channel_configs
-
-    @property
-    def orders(self):
-        """Return queue containing open orders associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Orders']
-
-    @property
-    def orders_new(self):
-        """Return queue containing new orders associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Order New']
-
-    @property
-    def orders_update(self):
-        """Return queue containing order updates associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Order Update']
-
-    @property
-    def orders_cancel(self):
-        """Return queue containing order cancellations associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Order Cancel']
-
-    @property
-    def positions(self):
-        """Return queue containing open positions associated with the user
-        
-        account.
-        :return: Queue()
-        """
-        return self.queue_processor.account['Positions']
-    
-    @property
-    def positions_new(self):
-        """Return queue containing new positions associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Position New']
-
-    @property
-    def positions_update(self):
-        """Return queue containing position updates associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Position Update']
-
-    @property
-    def positions_cancel(self):
-        """Return queue containing position cancellations associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Position Cancel']
-    
-    @property
-    def funding_offer_new(self):
-        """Return queue containing new funding offers associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Offer New']
-    
-    @property
-    def funding_offer_update(self):
-        """Return queue containing funding offer updates associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Offer Update']
-    
-    @property
-    def funding_offer_cancel(self):
-        """Return queue containing canceled funding offers associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Offer Cancel']
-    
-    @property
-    def funding_credit_new(self):
-        """Return queue containing new funding credit associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Credit New']
-    
-    @property
-    def funding_credit_update(self):
-        """Return queue containing funding credit updates associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Credit Update']
-    
-    @property
-    def funding_credit_cancel(self):
-        """Return queue containing canceled funding credit associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Credit Cancel']
-    
-    @property
-    def funding_loan_new(self):
-        """Return queue containing new funding loan associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Loan New']
-    
-    @property
-    def funding_loan_update(self):
-        """Return queue containing funding loan updates associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Loan Update']
-    
-    @property
-    def funding_loan_cancel(self):
-        """Return queue containing canceled funding loan associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Loan Cancel']
-
-    @property
-    def transactions(self):
-        """Return history of trades associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Trades']
-
-    @property
-    def loans(self):
-        """Return current loans associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Loans']
-    
-    @property
-    def wallets(self):
-        """Return wallet balances associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Wallets']
-
-    @property
-    def balance_info(self):
-        """Return balance information associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Balance Info']
-
-    @property
-    def margin_info(self):
-        """Return margin information associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Margin Info']
-
-    @property
-    def offers(self):
-        """Return current offers associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Offers']
-
-    @property
-    def funding_info(self):
-        """Return funding information associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding Info']
-
-    @property
-    def credits(self):
-        """Return current credits associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Credits']
 
     @property
     def channel_directory(self):
@@ -260,28 +60,15 @@ class BtfxWss:
         """
         return self.queue_processor.channel_directory
 
-    @property
-    def funding_trades(self):
-        """Return funding trades associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Funding_trades']
+    ##############################################
+    # Client Initialization and Shutdown Methods #
+    ##############################################
 
-    @property
-    def notifications(self):
-        """Return notifications associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Notifications']
-    
-    # DEPRECATED FUNCTIONS
-    @property
-    def historical_credits(self):
-        """Return history of credits associated with the user account.
-        
-        :return: Queue()
+    def start(self):
+        """Start the client.
+
+        :return:
+
         """
         return self.queue_processor.account['Historical Credits']
     
@@ -328,13 +115,13 @@ class BtfxWss:
         """
         self.conn.disconnect()
         self.queue_processor.join()
-
     def reset(self):
         """Reset the client.
 
         :return:
         """
         self.conn.reconnect()
+        
         while not self.conn.connected.is_set():
             log.info("reset(): Waiting for connection to be set up..")
             time.sleep(1)
@@ -407,6 +194,10 @@ class BtfxWss:
             return self.queue_processor.candles[key]
         else:
             raise KeyError(pair)
+
+    def account(self):
+        return self.queue_processor.account
+
 
     ##########################################
     # Subscription and Configuration Methods #
@@ -567,7 +358,6 @@ class BtfxWss:
     def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
         """Unsubscribe to the passed pair's OHLC data channel.
 
-        v
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
                                 1D, 7D, 14D, 1M}
         :param kwargs:
@@ -600,7 +390,7 @@ class BtfxWss:
 
     @is_connected
     def new_order(self, **order_settings):
-        """Post a new Order va Websocket.
+        """Post a new Order via Websocket.
 
         :param kwargs:
         :return:

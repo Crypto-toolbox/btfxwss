@@ -1,9 +1,12 @@
-# 1.1.2
+# 1.1.4
 
 ## Fixed
 - If a connection drops, the client automatically resubscribes to channels
+- Fixed an issue where the candles channel wasn't subscribable due to an overvlap
+in variable naming
 - Fixed example in README.md
-
+- Added build state in README
+- Added option to pass custom SSL ops to websocket
 ## Changed
 - prioritizing symbol over pair now, when creating channel identifier
 
@@ -13,7 +16,7 @@
 ## Added
 - Support for Authentication Channels Data Stream
 - Properties on Client class to ease access to account information
-- More debug log calls to connection class to provide more indepth information.
+- More debug log calls to connection class to provide more in-depth information.
 
 ## Fixed
 - Issue where Error codes would cause a reconnect when not necessary
@@ -39,9 +42,7 @@ to call a client method before the connection was established
 
 ## Changed
 - Moved processing of data and connection handling to separate class each
-- rewrote connection code
+- Rewrote connection code
 - Data is now supplied as queues
 - Removed `open()` call in setup.py, caused error on install
 
-
-## Removed
