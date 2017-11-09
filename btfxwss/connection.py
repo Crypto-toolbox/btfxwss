@@ -446,13 +446,12 @@ class WebSocketConnection(Thread):
         while True:
             try:
                 identifier, q = self.channel_configs.popitem(last=True if soft else False)
+                q_list.append((identifier, q.copy()))
             except KeyError:
                 break
             if identifier == 'auth':
                 self.send(**q, auth=True)
                 continue
-
-            q_list.append((identifier, q.copy()))
             if soft:
                 q['event'] = 'unsubscribe'
             self.send(**q)
