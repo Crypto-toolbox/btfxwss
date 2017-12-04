@@ -381,58 +381,58 @@ class WebSocketConnection(Thread):
         self.pass_to_client(event, data, ts)
 
     def _info_handler(self, data):
-        """Handles INFO messages from the API and issues relevant actions.
+        """
+        Handle INFO messages from the API and issues relevant actions.
 
         :param data:
         :param ts:
-        :return:
         """
-
-        def raise_exception():
-            """Log info code as error and raise a ValueError."""
-            self.log.error("%s: %s", data['code'], info_message[data['code']])
-            raise ValueError("%s: %s" % (data['code'], info_message[data['code']]))
-
-        if 'code' not in data and 'version' in data:
-            self.log.info("Initialized API Version %s" % data['version'])
-            return
-
-        codes = {'200000': raise_exception, '20051': self.reconnect, '20060': self._pause,
-                 '20061': self._unpause}
-        info_message = {'20000': 'Invalid User given! Please make sure the given ID is correct!',
-                        '20051': 'Stop/Restart websocket server '
+        info_message = {'20051': 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
                         '20060': 'Refreshing data from the trading engine; '
                                  'please pause any acivity.',
                         '20061': 'Done refreshing data from the trading engine.'
                                  ' Re-subscription advised.'}
+
+        codes = {'20051': self.reconnect, '20060': self._pause,
+                 '20061': self._unpause}
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
         except KeyError as e:
-            log.exception(e)
+            self.log.exception(e)
+            self.log.error("Unknown Info code %s!", data['code'])
             raise
 
     def _error_handler(self, data):
-        """Handles Error messages and logs them accordingly.
+        """
+        Handle Error messages and log them accordingly.
 
         :param data:
         :param ts:
-        :return:
         """
         errors = {10000: 'Unknown event',
-                  10001: 'Unknown pair',
+                  10001: 'Generic error',
+                  10008: 'Concurrency error',
+                  10020: 'Request parameters error',
+                  10050: 'Configuration setup failed',
+                  10100: 'Failed authentication',
+                  10111: 'Error in authentication request payload',
+                  10112: 'Error in authentication request signature',
+                  10113: 'Error in authentication request encryption',
+                  10114: 'Error in authentication request nonce',
+                  10200: 'Error in un-authentication request',
                   10300: 'Subscription Failed (generic)',
                   10301: 'Already Subscribed',
                   10302: 'Unknown channel',
                   10400: 'Subscription Failed (generic)',
                   10401: 'Not subscribed',
+                  11000: 'Not ready, try again later',
+                  20000: 'User is invalid!'
                   }
         try:
             self.log.error(errors[data['code']])
-        except KeyError as e:
-            # Unknown error code, log it and reconnect.
-            log.exception(e)
+        except KeyError:
             self.log.error("Received unknown error Code in message %s! "
                            "Reconnecting..", data)
 
