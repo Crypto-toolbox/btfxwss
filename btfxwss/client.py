@@ -47,6 +47,9 @@ class BtfxWss:
     ##############
     # Properties #
     ##############
+    @property
+    def is_connected(self):
+        return self.conn.connected.is_set()
 
     @property
     def channel_configs(self):
@@ -68,42 +71,6 @@ class BtfxWss:
         """Start the client.
 
         :return:
-
-        """
-        return self.queue_processor.account['Historical Credits']
-    
-    @property
-    def historical_offers(self):
-        """Return history of offers associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Offers']
-    
-    @property
-    def historical_loans(self):
-        """Return history of loans associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Loans']
-    
-    @property
-    def historical_orders(self):
-        """Return history of orders associated with the user account.
-        
-        :return: Queue()
-        """
-        return self.queue_processor.account['Historical Orders']
-
-    ##############################################
-    # Client Initialization and Shutdown Methods #
-    ##############################################
-
-    def start(self):
-        """Start the client.
-
-        :return:
         """
         self.conn.start()
         self.queue_processor.start()
@@ -115,6 +82,7 @@ class BtfxWss:
         """
         self.conn.disconnect()
         self.queue_processor.join()
+
     def reset(self):
         """Reset the client.
 
@@ -195,6 +163,7 @@ class BtfxWss:
         else:
             raise KeyError(pair)
 
+    @property
     def account(self):
         return self.queue_processor.account
 
