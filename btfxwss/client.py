@@ -11,9 +11,9 @@ from btfxwss.queue_processor import QueueProcessor
 log = logging.getLogger(__name__)
 
 
-def is_connected(func):
+def assert_is_connected(func):
     def wrapped(self, *args, **kwargs):
-        if self.conn and self.conn.connected.is_set():
+        if self.conn and self.is_connected:
             return func(self, *args, **kwargs)
         else:
             log.error("Cannot call %s() on unestablished connection!",
@@ -208,7 +208,7 @@ class BtfxWss:
         q.update(kwargs)
         self.conn.send(**q)
 
-    @is_connected
+    @assert_is_connected
     def subscribe_to_ticker(self, pair, **kwargs):
         """Subscribe to the passed pair's ticker channel.
 
