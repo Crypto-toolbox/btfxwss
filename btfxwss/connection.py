@@ -387,7 +387,13 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        codes = {'20051': self.reconnect, '20060': self._pause,
+
+        def raise_exception():
+            """Log info code as error and raise a ValueError."""
+            self.log.error("%s: %s", data['code'], info_message[data['code']])
+            raise ValueError("%s: %s" % (data['code'], info_message[data['code']]))
+
+        codes = {'200000': raise_exception, '20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
         info_message = {'20000': 'Invalid User given! Please make sure the given ID is correct!',
                         '20051': 'Stop/Restart websocket server '
