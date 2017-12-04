@@ -393,6 +393,10 @@ class WebSocketConnection(Thread):
             self.log.error("%s: %s", data['code'], info_message[data['code']])
             raise ValueError("%s: %s" % (data['code'], info_message[data['code']]))
 
+        if 'code' not in data and 'version' in data:
+            self.log.info("Initialized API Version %s" % data['version'])
+            return
+
         codes = {'200000': raise_exception, '20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
         info_message = {'20000': 'Invalid User given! Please make sure the given ID is correct!',
