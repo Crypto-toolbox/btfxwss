@@ -11,7 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
+   Code Documentation <reference>
 
 Indices and tables
 ==================
