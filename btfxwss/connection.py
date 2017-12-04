@@ -417,12 +417,22 @@ class WebSocketConnection(Thread):
         :return:
         """
         errors = {10000: 'Unknown event',
-                  10001: 'Unknown pair',
+                  10001: 'Generic error',
+                  10008: 'Concurrency error',
+                  10020: 'Request parameters error',
+                  10050: 'Configuration setup failed',
+                  10100: 'Failed authentication',
+                  10111: 'Error in authentication request payload',
+                  10112: 'Error in authentication request signature',
+                  10113: 'Error in authentication request encryption',
+                  10114: 'Error in authentication request nonce',
+                  10200: 'Error in un-authentication request',
                   10300: 'Subscription Failed (generic)',
                   10301: 'Already Subscribed',
                   10302: 'Unknown channel',
                   10400: 'Subscription Failed (generic)',
                   10401: 'Not subscribed',
+                  11000: 'Not ready, try again later',
                   }
         try:
             self.log.error(errors[data['code']])
