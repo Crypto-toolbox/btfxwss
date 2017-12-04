@@ -387,9 +387,16 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        codes = {'20051': self.reconnect, '20060': self._pause,
+
+        def raise_exception():
+            """Log info code as error and raise a ValueError."""
+            self.log.error("%s: %s", data['code'], info_message[data['code']])
+            raise ValueError("%s: %s" % (data['code'], info_message[data['code']]))
+
+        codes = {'200000': raise_exception, '20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
-        info_message = {'20051': 'Stop/Restart websocket server '
+        info_message = {'20000': 'Invalid User given! Please make sure the given ID is correct!',
+                        '20051': 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
                         '20060': 'Refreshing data from the trading engine; '
                                  'please pause any acivity.',
@@ -398,9 +405,9 @@ class WebSocketConnection(Thread):
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
-        except KeyError:
-            # Unknonw info code, log it
-            return
+        except KeyError as e:
+            log.exception(e)
+            raise
 
     def _error_handler(self, data):
         """Handles Error messages and logs them accordingly.
@@ -419,8 +426,9 @@ class WebSocketConnection(Thread):
                   }
         try:
             self.log.error(errors[data['code']])
-        except KeyError:
+        except KeyError as e:
             # Unknown error code, log it and reconnect.
+            log.exception(e)
             self.log.error("Received unknown error Code in message %s! "
                            "Reconnecting..", data)
 
@@ -448,11 +456,10 @@ class WebSocketConnection(Thread):
                 identifier, q = self.channel_configs.popitem(last=True if soft else False)
             except KeyError:
                 break
+            q_list.append((identifier, q.copy()))
             if identifier == 'auth':
                 self.send(**q, auth=True)
                 continue
-
-            q_list.append((identifier, q.copy()))
             if soft:
                 q['event'] = 'unsubscribe'
             self.send(**q)
