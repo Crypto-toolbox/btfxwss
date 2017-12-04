@@ -219,7 +219,7 @@ class BtfxWss:
         identifier = ('ticker', pair)
         self._subscribe('ticker', identifier, symbol=pair, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def unsubscribe_from_ticker(self, pair, **kwargs):
         """Unsubscribe to the passed pair's ticker channel.
 
@@ -230,7 +230,7 @@ class BtfxWss:
         identifier = ('ticker', pair)
         self._unsubscribe('ticker', identifier, symbol=pair, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def subscribe_to_order_book(self, pair, **kwargs):
         """Subscribe to the passed pair's order book channel.
 
@@ -241,7 +241,7 @@ class BtfxWss:
         identifier = ('book', pair)
         self._subscribe('book', identifier, symbol=pair, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def unsubscribe_from_order_book(self, pair, **kwargs):
         """Unsubscribe to the passed pair's order book channel.
 
@@ -252,7 +252,7 @@ class BtfxWss:
         identifier = ('book', pair)
         self._unsubscribe('book', identifier, symbol=pair, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def subscribe_to_raw_order_book(self, pair, prec=None, **kwargs):
         """Subscribe to the passed pair's raw order book channel.
 
@@ -265,7 +265,7 @@ class BtfxWss:
         prec = 'R0' if prec is None else prec
         self._subscribe('book', identifier, pair=pair, prec=prec, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def unsubscribe_from_raw_order_book(self, pair, prec=None, **kwargs):
         """Unsubscribe to the passed pair's raw order book channel.
 
@@ -278,7 +278,7 @@ class BtfxWss:
         prec = 'R0' if prec is None else prec
         self._unsubscribe('book', identifier, pair=pair, prec=prec, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def subscribe_to_trades(self, pair, **kwargs):
         """Subscribe to the passed pair's trades channel.
 
@@ -289,7 +289,7 @@ class BtfxWss:
         identifier = ('trades', pair)
         self._subscribe('trades', identifier, symbol=pair, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def unsubscribe_from_trades(self, pair, **kwargs):
         """Unsubscribe to the passed pair's trades channel.
 
@@ -300,7 +300,7 @@ class BtfxWss:
         identifier = ('trades', pair)
         self._unsubscribe('trades', identifier, symbol=pair, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def subscribe_to_candles(self, pair, timeframe=None, **kwargs):
         """Subscribe to the passed pair's OHLC data channel.
 
@@ -323,7 +323,7 @@ class BtfxWss:
         key = 'trade:' + timeframe + ':' + pair
         self._subscribe('candles', identifier, key=key, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
         """Unsubscribe to the passed pair's OHLC data channel.
 
@@ -346,7 +346,7 @@ class BtfxWss:
 
         self._unsubscribe('candles', identifier, key=key, **kwargs)
 
-    @is_connected
+    @assert_is_connected
     def authenticate(self):
         """Authenticate with the Bitfinex API.
 
@@ -357,7 +357,7 @@ class BtfxWss:
         self.channel_configs['auth'] = {'api_key': self.key, 'secret': self.secret}
         self.conn.send(api_key=self.key, secret=self.secret, auth=True)
 
-    @is_connected
+    @assert_is_connected
     def new_order(self, **order_settings):
         """Post a new Order via Websocket.
 
@@ -366,7 +366,7 @@ class BtfxWss:
         """
         self._send_auth_command('on', order_settings)
 
-    @is_connected
+    @assert_is_connected
     def cancel_order(self, multi=False, **order_identifiers):
         """Cancel one or multiple orders via Websocket.
 
@@ -380,7 +380,7 @@ class BtfxWss:
         else:
             self._send_auth_command('oc', order_identifiers)
 
-    @is_connected
+    @assert_is_connected
     def order_multi_op(self, *operations):
         """Execute multiple, order-related operations via Websocket.
 
@@ -389,7 +389,7 @@ class BtfxWss:
         """
         self._send_auth_command('ox_multi', operations)
 
-    @is_connected
+    @assert_is_connected
     def calc(self, *calculations):
         """Request one or several operations via Websocket.
 
