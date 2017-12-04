@@ -363,19 +363,15 @@ class WebSocketConnection(Thread):
                         '20061': 'Done refreshing data from the trading engine.'
                                  ' Re-subscription advised.'}
 
-        def raise_exception():
-            msg = "%s: %s" % (data['code'], info_message[data['code']])
-            self.log.error(msg)
-            raise ValueError(msg)
-
-        codes = {'20000': raise_exception, '20051': self.reconnect, '20060': self._pause,
+        codes = {'20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
-        except KeyError:
-            # Unknonw info code, log it
-            return
+        except KeyError as e:
+            self.log.exception(e)
+            self.log.error("Unknown Info code %s!", data['code'])
+            raise
 
     def _error_handler(self, data):
         """
@@ -401,11 +397,11 @@ class WebSocketConnection(Thread):
                   10400: 'Subscription Failed (generic)',
                   10401: 'Not subscribed',
                   11000: 'Not ready, try again later',
+                  20000: 'User is invalid!'
                   }
         try:
             self.log.error(errors[data['code']])
         except KeyError:
-            # Unknown error code, log it and reconnect.
             self.log.error("Received unknown error Code in message %s! "
                            "Reconnecting..", data)
 
