@@ -388,14 +388,20 @@ class WebSocketConnection(Thread):
         :param ts:
         :return:
         """
-        codes = {'20051': self.reconnect, '20060': self._pause,
-                 '20061': self._unpause}
         info_message = {'20051': 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
                         '20060': 'Refreshing data from the trading engine; '
                                  'please pause any acivity.',
                         '20061': 'Done refreshing data from the trading engine.'
                                  ' Re-subscription advised.'}
+
+        def raise_exception():
+            msg = "%s: %s" % (data['code'], info_message[data['code']])
+            self.log.error(msg)
+            raise ValueError(msg)
+
+        codes = {'20000': raise_exception, '20051': self.reconnect, '20060': self._pause,
+                 '20061': self._unpause}
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
