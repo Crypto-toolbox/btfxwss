@@ -22,9 +22,11 @@ class QueueProcessor(Thread):
     ( BTCUSD, ETHBTC, etc).
 
     """
+
     def __init__(self, data_q, log_level=None,
                  *args, **kwargs):
-        """Initialze a QueueProcessor instance.
+        """
+        Initialze a QueueProcessor instance.
 
         :param data_q: Queue()
         :param log_level: logging level
@@ -72,7 +74,8 @@ class QueueProcessor(Thread):
         self.log.setLevel(level=logging.INFO if not log_level else log_level)
 
     def join(self, timeout=None):
-        """Set sentinel for run() method and join thread.
+        """
+        Set sentinel for run() method and join thread.
 
         :param timeout:
         :return:
@@ -81,10 +84,7 @@ class QueueProcessor(Thread):
         super(QueueProcessor, self).join(timeout=timeout)
 
     def run(self):
-        """Main routine.
-
-        :return:
-        """
+        """Execute the main routine."""
         while not self._stopped.is_set():
             try:
                 message = self.q.get(timeout=0.1)
@@ -118,7 +118,8 @@ class QueueProcessor(Thread):
                 continue
 
     def _handle_subscribed(self, dtype, data, ts,):
-        """Handles responses to subscribe() commands.
+        """
+        Handle responses to subscribe() commands.
 
         Registers a channel id with the client and assigns a data handler to it.
 
@@ -161,7 +162,8 @@ class QueueProcessor(Thread):
         self.log.info("Subscription succesful for channel %s", identifier)
 
     def _handle_unsubscribed(self, dtype, data, ts):
-        """Handles responses to unsubscribe() commands.
+        """
+        Handle responses to unsubscribe() commands.
 
         Removes a channel id from the client.
 
@@ -181,7 +183,8 @@ class QueueProcessor(Thread):
         self.log.info("Successfully unsubscribed from %s", chan_identifier)
 
     def _handle_auth(self, dtype, data, ts):
-        """Handles authentication responses.
+        """
+        Handle authentication responses.
 
         :param dtype:
         :param data:
@@ -200,7 +203,8 @@ class QueueProcessor(Thread):
         self.channel_directory[channel_id] = identifier
 
     def _handle_conf(self, dtype, data, ts):
-        """Handles configuration messages.
+        """
+        Handle configuration messages.
 
         :param dtype:
         :param data:
@@ -212,7 +216,8 @@ class QueueProcessor(Thread):
         return
 
     def update_timestamps(self, chan_id, ts):
-        """Updates the timestamp for the given channel id.
+        """
+        Update the timestamp for the given channel id.
 
         :param chan_id:
         :param ts:
@@ -226,28 +231,8 @@ class QueueProcessor(Thread):
                              self.channel_directory[chan_id])
 
     def _handle_account(self, dtype, data, ts):
-        """ Handles Account related data.
-
-        translation table for channel names:
-            Data Channels
-            os      -   Orders
-            hos     -   Historical Orders
-            ps      -   Positions
-            hts     -   Trades (snapshot)
-            te      -   Trade Event
-            tu      -   Trade Update
-            ws      -   Wallets
-            bu      -   Balance Info
-            miu     -   Margin Info
-            fiu     -   Funding Info
-            fos     -   Offers
-            hfos    -   Historical Offers
-            fcs     -   Credits
-            hfcs    -   Historical Credits
-            fls     -   Loans
-            hfls    -   Historical Loans
-            htfs    -   Funding Trades
-            n       -   Notifications (WIP)
+        """
+        Handle Account related data.
 
         :param dtype:
         :param data:
@@ -260,8 +245,8 @@ class QueueProcessor(Thread):
         self.account.put(entry)
 
     def _handle_ticker(self, dtype, data, ts):
-        """Adds received ticker data to self.tickers dict, filed under its channel
-        id.
+        """
+        Add received ticker data to self.tickers dict, filed under its channel id.
 
         :param dtype:
         :param data:
@@ -275,7 +260,8 @@ class QueueProcessor(Thread):
         self.tickers[channel_identifier].put(entry)
 
     def _handle_book(self, dtype, data, ts):
-        """Updates the order book stored in self.books[chan_id].
+        """
+        Update the order book stored in self.books[chan_id].
 
         :param dtype:
         :param data:
@@ -290,7 +276,8 @@ class QueueProcessor(Thread):
         self.books[channel_identifier].put(entry)
 
     def _handle_raw_book(self, dtype, data, ts):
-        """Updates the raw order books stored in self.raw_books[chan_id].
+        """
+        Update the raw order books stored in self.raw_books[chan_id].
 
         :param dtype:
         :param data:
@@ -304,7 +291,8 @@ class QueueProcessor(Thread):
         self.raw_books[channel_identifier].put(entry)
 
     def _handle_trades(self, dtype, data, ts):
-        """Files trades in self._trades[chan_id].
+        """
+        File trades in self._trades[chan_id].
 
         :param dtype:
         :param data:
@@ -318,7 +306,8 @@ class QueueProcessor(Thread):
         self.trades[channel_identifier].put(entry)
 
     def _handle_candles(self, dtype, data, ts):
-        """Stores OHLC data received via wss in self.candles[chan_id].
+        """
+        Store OHLC data received via wss in self.candles[chan_id].
 
         :param dtype:
         :param data:

@@ -23,7 +23,8 @@ def assert_is_connected(func):
 
 
 class BtfxWss:
-    """Websocket Client Interface to Bitfinex WSS API
+    """
+    Websocket Client Interface to Bitfinex WSS API
 
     It features separate threads for the connection and data handling.
     Data can be accessed using the provided methods.
@@ -32,6 +33,7 @@ class BtfxWss:
     def __init__(self, key=None, secret=None, log_level=None, **wss_kwargs):
         """
         Initializes BtfxWss Instance.
+
         :param key: Api Key as string
         :param secret: Api secret as string
         :param addr: Websocket API Address
@@ -49,15 +51,18 @@ class BtfxWss:
     ##############
     @property
     def is_connected(self):
+        """Return a bool for current connection status."""
         return self.conn.connected.is_set()
 
     @property
     def channel_configs(self):
+        """Return a list of all send channel subscriptions."""
         return self.conn.channel_configs
 
     @property
     def channel_directory(self):
-        """Return channel directory of currently subscribed channels.
+        """
+        Return channel directory of currently subscribed channels.
         
         :return: Queue()
         """
@@ -68,26 +73,17 @@ class BtfxWss:
     ##############################################
 
     def start(self):
-        """Start the client.
-
-        :return:
-        """
+        """Start the client."""
         self.conn.start()
         self.queue_processor.start()
 
     def stop(self):
-        """Stop the client.
-
-        :return:
-        """
+        """Stop the client."""
         self.conn.disconnect()
         self.queue_processor.join()
 
     def reset(self):
-        """Reset the client.
-
-        :return:
-        """
+        """Reset the client."""
         self.conn.reconnect()
         
         while not self.conn.connected.is_set():
@@ -102,7 +98,8 @@ class BtfxWss:
     ##########################
 
     def tickers(self, pair):
-        """Return a queue containing all received ticker data.
+        """
+        Return a queue containing all received ticker data.
 
         :param pair:
         :return: Queue()
@@ -114,7 +111,8 @@ class BtfxWss:
             raise KeyError(pair)
 
     def books(self, pair):
-        """Return a queue containing all received book data.
+        """
+        Return a queue containing all received book data.
 
         :param pair:
         :return: Queue()
@@ -126,7 +124,8 @@ class BtfxWss:
             raise KeyError(pair)
 
     def raw_books(self, pair):
-        """Return a queue containing all received raw book data.
+        """
+        Return a queue containing all received raw book data.
 
         :param pair:
         :return: Queue()
@@ -138,7 +137,8 @@ class BtfxWss:
             raise KeyError(pair)
 
     def trades(self, pair):
-        """Return a queue containing all received trades data.
+        """
+        Return a queue containing all received trades data.
 
         :param pair:
         :return: Queue()
@@ -150,7 +150,8 @@ class BtfxWss:
             raise KeyError(pair)
 
     def candles(self, pair, timeframe=None):
-        """Return a queue containing all received candles data.
+        """
+        Return a queue containing all received candles data.
 
         :param pair: str, Symbol pair to request data for
         :param timeframe: str
@@ -165,6 +166,7 @@ class BtfxWss:
 
     @property
     def account(self):
+        """Return a queue containing all received 'auth' channel messages."""
         return self.queue_processor.account
 
 
@@ -173,6 +175,7 @@ class BtfxWss:
     ##########################################
 
     def _subscribe(self, channel_name, identifier, **kwargs):
+        """Send a subscription request to the API."""
         q = {'event': 'subscribe', 'channel': channel_name}
         q.update(**kwargs)
         log.debug("_subscribe: %s", q)
@@ -180,7 +183,7 @@ class BtfxWss:
         self.channel_configs[identifier] = q
 
     def _unsubscribe(self, channel_name, identifier, **kwargs):
-
+        """Send an 'Unsubscribe' request to the API."""
         channel_id = self.channel_directory[identifier]
         q = {'event': 'unsubscribe', 'chanId': channel_id}
         q.update(kwargs)
@@ -189,7 +192,8 @@ class BtfxWss:
 
     def config(self, decimals_as_strings=True, ts_as_dates=False,
                sequencing=False, **kwargs):
-        """Send configuration to websocket server
+        """
+        Send configuration to websocket server.
 
         :param decimals_as_strings: bool, turn on/off decimals as strings
         :param ts_as_dates: bool, decide to request timestamps as dates instead
@@ -210,7 +214,8 @@ class BtfxWss:
 
     @assert_is_connected
     def subscribe_to_ticker(self, pair, **kwargs):
-        """Subscribe to the passed pair's ticker channel.
+        """
+        Subscribe to the passed pair's ticker channel.
 
         :param pair: str, Symbol pair to request data for
         :param kwargs:
@@ -221,7 +226,8 @@ class BtfxWss:
 
     @assert_is_connected
     def unsubscribe_from_ticker(self, pair, **kwargs):
-        """Unsubscribe to the passed pair's ticker channel.
+        """
+        Unsubscribe to the passed pair's ticker channel.
 
         :param pair: str, Symbol pair to request data for
         :param kwargs:
@@ -232,7 +238,8 @@ class BtfxWss:
 
     @assert_is_connected
     def subscribe_to_order_book(self, pair, **kwargs):
-        """Subscribe to the passed pair's order book channel.
+        """
+        Subscribe to the passed pair's order book channel.
 
         :param pair: str, Symbol pair to request data for
         :param kwargs:
@@ -243,7 +250,8 @@ class BtfxWss:
 
     @assert_is_connected
     def unsubscribe_from_order_book(self, pair, **kwargs):
-        """Unsubscribe to the passed pair's order book channel.
+        """
+        Unsubscribe to the passed pair's order book channel.
 
         :param pair: str, Symbol pair to request data for
         :param kwargs:
@@ -254,7 +262,8 @@ class BtfxWss:
 
     @assert_is_connected
     def subscribe_to_raw_order_book(self, pair, prec=None, **kwargs):
-        """Subscribe to the passed pair's raw order book channel.
+        """
+        Subscribe to the passed pair's raw order book channel.
 
         :param pair: str, Symbol pair to request data for
         :param prec:
@@ -267,7 +276,8 @@ class BtfxWss:
 
     @assert_is_connected
     def unsubscribe_from_raw_order_book(self, pair, prec=None, **kwargs):
-        """Unsubscribe to the passed pair's raw order book channel.
+        """
+        Unsubscribe to the passed pair's raw order book channel.
 
         :param pair: str, Symbol pair to request data for
         :param prec:
@@ -280,7 +290,8 @@ class BtfxWss:
 
     @assert_is_connected
     def subscribe_to_trades(self, pair, **kwargs):
-        """Subscribe to the passed pair's trades channel.
+        """
+        Subscribe to the passed pair's trades channel.
 
         :param pair: str, Symbol pair to request data for
         :param kwargs:
@@ -291,7 +302,8 @@ class BtfxWss:
 
     @assert_is_connected
     def unsubscribe_from_trades(self, pair, **kwargs):
-        """Unsubscribe to the passed pair's trades channel.
+        """
+        Unsubscribe to the passed pair's trades channel.
 
         :param pair: str, Symbol pair to request data for
         :param kwargs:
@@ -302,7 +314,8 @@ class BtfxWss:
 
     @assert_is_connected
     def subscribe_to_candles(self, pair, timeframe=None, **kwargs):
-        """Subscribe to the passed pair's OHLC data channel.
+        """
+        Subscribe to the passed pair's OHLC data channel.
 
         :param pair: str, Symbol pair to request data for
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
@@ -325,7 +338,8 @@ class BtfxWss:
 
     @assert_is_connected
     def unsubscribe_from_candles(self, pair, timeframe=None, **kwargs):
-        """Unsubscribe to the passed pair's OHLC data channel.
+        """
+        Unsubscribe to the passed pair's OHLC data channel.
 
         :param timeframe: str, {1m, 5m, 15m, 30m, 1h, 3h, 6h, 12h,
                                 1D, 7D, 14D, 1M}
@@ -348,10 +362,7 @@ class BtfxWss:
 
     @assert_is_connected
     def authenticate(self):
-        """Authenticate with the Bitfinex API.
-
-        :return:
-        """
+        """Authenticate with the Bitfinex API."""
         if not self.key and not self.secret:
             raise ValueError("Must supply both key and secret key for API!")
         self.channel_configs['auth'] = {'api_key': self.key, 'secret': self.secret}
@@ -359,7 +370,8 @@ class BtfxWss:
 
     @assert_is_connected
     def new_order(self, **order_settings):
-        """Post a new Order via Websocket.
+        """
+        Post a new Order via Websocket.
 
         :param kwargs:
         :return:
@@ -368,7 +380,8 @@ class BtfxWss:
 
     @assert_is_connected
     def cancel_order(self, multi=False, **order_identifiers):
-        """Cancel one or multiple orders via Websocket.
+        """
+        Cancel one or multiple orders via Websocket.
 
         :param multi: bool, whether order_settings contains settings for one, or
                       multiples orders
@@ -382,7 +395,8 @@ class BtfxWss:
 
     @assert_is_connected
     def order_multi_op(self, *operations):
-        """Execute multiple, order-related operations via Websocket.
+        """
+        Execute multiple, order-related operations via Websocket.
 
         :param operations: operations to send to the websocket
         :return:
@@ -391,7 +405,8 @@ class BtfxWss:
 
     @assert_is_connected
     def calc(self, *calculations):
-        """Request one or several operations via Websocket.
+        """
+        Request one or several operations via Websocket.
 
         :param calculations: calculations as strings to send to the websocket
         :return:
@@ -399,5 +414,6 @@ class BtfxWss:
         self._send_auth_command('calc', calculations)
 
     def _send_auth_command(self, channel_name, data):
+        """Send a command for the private channel to the API."""
         payload = [0, channel_name, None, data]
         self.conn.send(list_data=payload)
