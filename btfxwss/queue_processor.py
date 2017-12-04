@@ -1,3 +1,9 @@
+"""
+QueueProcessor Class.
+
+Handles high-level messages relating to subscription and unsubscription to and from channels,
+as well as sorting data messages in to their related queues.
+"""
 # Import Built-Ins
 import logging
 from threading import Thread, Event
@@ -14,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 class QueueProcessor(Thread):
-    """Data Processing Thread
+    """Data Processing Thread.
 
     It handles and sorts all API messages relating to
     subscription / subscription cancelling, and sorts all data messages into

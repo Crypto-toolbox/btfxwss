@@ -1,3 +1,8 @@
+"""
+BtfxWss WebSocketConnection object.
+
+Handles low-level messages regarding connectivity, as well as error handling.
+"""
 # Import Built-Ins
 import logging
 import json

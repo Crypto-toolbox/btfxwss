@@ -1,3 +1,8 @@
+"""
+BtfxWss Client interface object.
+
+Provides simplified interaction via methods and properties to the Bitfinex Websocket API.
+"""
 # Import Built-Ins
 import logging
 import time
@@ -12,7 +17,9 @@ log = logging.getLogger(__name__)
 
 
 def assert_is_connected(func):
+    """Decorate BtfxWss method to assert an established connection first."""
     def wrapped(self, *args, **kwargs):
+        """Wrap the method."""
         if self.conn and self.is_connected:
             return func(self, *args, **kwargs)
         else:
@@ -24,7 +31,7 @@ def assert_is_connected(func):
 
 class BtfxWss:
     """
-    Websocket Client Interface to Bitfinex WSS API
+    Websocket Client Interface to Bitfinex WSS API.
 
     It features separate threads for the connection and data handling.
     Data can be accessed using the provided methods.
@@ -32,7 +39,7 @@ class BtfxWss:
 
     def __init__(self, key=None, secret=None, log_level=None, **wss_kwargs):
         """
-        Initializes BtfxWss Instance.
+        Initialize BtfxWss Instance.
 
         :param key: Api Key as string
         :param secret: Api secret as string
@@ -323,7 +330,6 @@ class BtfxWss:
         :param kwargs:
         :return:
         """
-
         valid_tfs = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
                      '7D', '14D', '1M']
         if timeframe:
@@ -346,7 +352,6 @@ class BtfxWss:
         :param kwargs:
         :return:
         """
-
         valid_tfs = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
                      '7D', '14D', '1M']
         if timeframe:
