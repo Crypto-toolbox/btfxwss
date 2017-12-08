@@ -396,6 +396,11 @@ class WebSocketConnection(Thread):
 
         codes = {'20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
+
+        if 'version' in data:
+            self.log.info("API version: %i", data['version'])
+            return
+
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
