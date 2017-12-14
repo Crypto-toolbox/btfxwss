@@ -28,12 +28,18 @@ class WebSocketConnection(Thread):
     activity and continuing of activity.
     """
     def __init__(self, *args, url=None, timeout=None, sslopt=None,
+                 http_proxy_host=None, http_proxy_port=None, http_proxy_auth=None, http_no_proxy=None,
                  reconnect_interval=None, log_level=None, **kwargs):
         """Initialize a WebSocketConnection Instance.
 
         :param data_q: Queue(), connection to the Client Class
         :param args: args for Thread.__init__()
         :param url: websocket address, defaults to v2 websocket.
+        :param http_proxy_host: proxy host name.
+        :param http_proxy_port: http proxy port. If not set, set to 80.
+        :param http_proxy_auth: http proxy auth information.
+                                tuple of username and password.
+        :param http_no_proxy: host names, which doesn't use proxy. 
         :param timeout: timeout for connection; defaults to 10s
         :param reconnect_interval: interval at which to try reconnecting;
                                    defaults to 10s.
@@ -48,7 +54,13 @@ class WebSocketConnection(Thread):
         self.socket = None
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
         self.sslopt = sslopt if sslopt else {}
-
+        
+        # Proxy Settings
+        self.http_proxy_host = http_proxy_host
+        self.http_proxy_port = http_proxy_port
+        self.http_proxy_auth = http_proxy_auth
+        self.http_no_proxy = http_no_proxy
+        
         # Dict to store all subscribe commands for reconnects
         self.channel_configs = OrderedDict()
 
@@ -125,7 +137,11 @@ class WebSocketConnection(Thread):
             self.sslopt['ca_certs'] = ssl_defaults.cafile
 
         self.log.debug("_connect(): Starting Connection..")
-        self.socket.run_forever(sslopt=self.sslopt)
+        self.socket.run_forever(sslopt=self.sslopt,
+                        http_proxy_host=self.http_proxy_host,
+                        http_proxy_port=self.http_proxy_port,
+                        http_proxy_auth=self.http_proxy_auth,
+                        http_no_proxy=self.http_no_proxy)
 
         while self.reconnect_required.is_set():
             if not self.disconnect_called.is_set():
@@ -137,7 +153,11 @@ class WebSocketConnection(Thread):
                 # We need to set this flag since closing the socket will
                 # set it to False
                 self.socket.keep_running = True
-                self.socket.run_forever(sslopt=self.sslopt)
+                self.socket.run_forever(sslopt=self.sslopt,
+                                http_proxy_host=self.http_proxy_host,
+                                http_proxy_port=self.http_proxy_port,
+                                http_proxy_auth=self.http_proxy_auth,
+                                http_no_proxy=self.http_no_proxy)
 
     def run(self):
         """Main method of Thread.
