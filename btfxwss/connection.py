@@ -453,7 +453,10 @@ class WebSocketConnection(Thread):
                   10400: 'Subscription Failed (generic)',
                   10401: 'Not subscribed',
                   11000: 'Not ready, try again later',
-                  20000: 'User is invalid!'
+                  20000: 'User is invalid!',
+                  20051: 'Websocket server stopping',
+                  20060: 'Websocket server resyncing',
+                  20061: 'Websocket server resync complete'
                   }
         try:
             self.log.error(errors[data['code']])
