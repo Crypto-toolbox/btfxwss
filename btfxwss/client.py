@@ -99,10 +99,7 @@ class BtfxWss:
         :return: Queue()
         """
         key = ('ticker', pair)
-        if key in self.queue_processor.tickers:
-            return self.queue_processor.tickers[key]
-        else:
-            raise KeyError(pair)
+        return self.queue_processor.tickers[key]
 
     def books(self, pair):
         """Return a queue containing all received book data.
@@ -111,10 +108,7 @@ class BtfxWss:
         :return: Queue()
         """
         key = ('book', pair)
-        if key in self.queue_processor.books:
-            return self.queue_processor.books[key]
-        else:
-            raise KeyError(pair)
+        return self.queue_processor.books[key]
 
     def raw_books(self, pair):
         """Return a queue containing all received raw book data.
@@ -123,10 +117,7 @@ class BtfxWss:
         :return: Queue()
         """
         key = ('raw_book', pair)
-        if key in self.queue_processor.raw_books:
-            return self.queue_processor.raw_books[key]
-        else:
-            raise KeyError(pair)
+        return self.queue_processor.raw_books[key]
 
     def trades(self, pair):
         """Return a queue containing all received trades data.
@@ -135,10 +126,7 @@ class BtfxWss:
         :return: Queue()
         """
         key = ('trades', pair)
-        if key in self.queue_processor.trades:
-            return self.queue_processor.trades[key]
-        else:
-            raise KeyError(pair)
+        return self.queue_processor.trades[key]
 
     def candles(self, pair, timeframe=None):
         """Return a queue containing all received candles data.
@@ -149,10 +137,7 @@ class BtfxWss:
         """
         timeframe = '1m' if not timeframe else timeframe
         key = ('candles', pair, timeframe)
-        if key in self.queue_processor.candles:
-            return self.queue_processor.candles[key]
-        else:
-            raise KeyError(pair)
+        return self.queue_processor.candles[key]
 
     ##########################################
     # Subscription and Configuration Methods #
