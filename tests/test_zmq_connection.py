@@ -63,7 +63,7 @@ def test_send_ping():
         conn.socket = mock.MagicMock(spec=socket)
         conn.send_ping()
 
-        conn.socket.assert_called_with('{"event":"ping"}')
+        conn.socket.send.assert_called_with('{"event":"ping"}')
         mock_timer.assert_called_once_with(30, conn._check_pong)
         assert conn.pong_timer == mock_timer
         assert mock_timer.start.called
@@ -119,11 +119,11 @@ def test_internal_connect(FakeWebSocketConnection, mock):
     conn.publisher = mock.MagicMock(spec=socket)
     conn.reconnect_required.is_set.return_value = False
     conn._connect()
-    assert fake_websocket_app.assert_called_once_with(
+    fake_websocket_app.assert_called_once_with(
         conn.url, on_open=conn._on_open, on_message=conn._on_message, on_error=conn._on_error,
         on_close=conn._on_close
     )
-    assert conn.socket.run_forever.assert_called_with(
+    conn.socket.run_forever.assert_called_with(
         sslopt={'ca_certs': ssl.get_default_verify_paths().ca_certs}
     )
     conn.log.debug.assert_called_with('_connect(): Starting Connection..')
@@ -146,7 +146,7 @@ def test_stop_timers(FakeWebSocketConnection):
     assert conn.ping_timer.cancel.called
     assert conn.connection_timer.cancel.called
     assert conn.pong_timer.cancel.called
-    conn.log.debug.assert_called_with("_stop_timers(): Timers stopped.")
+    conn.log.debug.assert_called_with("_stop_timers(): Resetting timers..")
 
 
 def test_start_timers(FakeWebSocketConnection):
@@ -220,14 +220,14 @@ def test_publish(FakeWebSocketConnection):
     ts = 23
 
     # Test public channel publishing
-    expected_frames = [json.dumps(x.encode()) for x in ('Test', test_data, ts)]
+    expected_frames = [json.dumps(x).encode() for x in ('Test', test_data, ts)]
     conn.publish(1, test_data, ts)
     conn.log.info.assert_called_with(
         "publish(): Sending frames %s from address %s..", expected_frames, conn.zmq_addr)
     conn.publisher.send_multipart.assert_called_with(expected_frames)
 
     # Test account channel publishing
-    expected_frames = [json.dumps(x.encode()) for x in ('Account/apple', test_data, ts)]
+    expected_frames = [json.dumps(x).encode() for x in ('Account/apple', test_data, ts)]
     conn.publish(0, test_data, ts)
     conn.log.info.assert_called_with(
         "publish(): Sending frames %s from address %s..", expected_frames, conn.zmq_addr)
@@ -249,6 +249,7 @@ def test_system_handler():
 def test_heartbeat_handler(FakeWebSocketConnection):
     conn = FakeWebSocketConnection
     with mock.patch.object(conn, '_start_timers') as fake_start_timers:
+        conn._heartbeat_handler(None)
         conn.log.debug.assert_called_with(
             "_heartbeat_handler(): Received a heart beat from connection!")
         assert fake_start_timers.called
