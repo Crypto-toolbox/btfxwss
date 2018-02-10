@@ -179,10 +179,9 @@ def test_check_pong(FakeWebSocketConnection, ):
                                           "Issuing reconnect..")
 
 
-@mock.patch('hmac.new', return_value='ok')
-@mock.patch('hmac.HMAC.hexdigest', return_value='ok')
-def test_send(*args, FakeWebSocketConnection):
-    fake_hmac_new, fake_hmac_hexdigest, *_ = args
+def test_send(FakeWebSocketConnection, mock):
+    fake_hmac_new = mock.patch('hmac.new')
+    fake_hmac_hexdigest = mock.patch('hmac.HMAC.hexdigest')
     expected_auth_payload = {'event': 'auth', 'apiKey': 'api_key', 'authSig': 'ok',
                              'authPayload': 'AUTH1000000', 'authNonce': '1000000'}
     expected_kwargs_payload = ['this', 'is', 'a', 'list']
