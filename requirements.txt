@@ -1,2 +1,6 @@
-websocket-client==0.40.0
+websocket-client
+pyzmq
+pytest
+coverage
+requests
 
