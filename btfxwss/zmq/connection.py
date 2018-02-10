@@ -317,6 +317,7 @@ class WebSocketConnection(Thread):
 
             payload = {'event': 'auth', 'apiKey': api_key, 'authSig': auth_sig,
                        'authPayload': auth_string, 'authNonce': nonce}
+            payload = json.dumps(payload)
         elif list_data:
             payload = json.dumps(list_data)
         else:
@@ -326,7 +327,7 @@ class WebSocketConnection(Thread):
             self.socket.send(payload)
             return payload
         except websocket.WebSocketConnectionClosedException:
-            self.log.error("_send(): Did not send out payload %s - client not connected. ", kwargs)
+            self.log.error("_send(): Did not send out payload %s - client not connected.", kwargs)
 
     def publish(self, chan_id, data, ts):
         """Send data via ZMQ socket as multipart message.
@@ -337,7 +338,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         channel = self._channels[chan_id]
-        if chan_id == '0':
+        if chan_id == 0:
             channel += '/' + data[0]
 
         frames = [json.dumps(x).encode() for x in (channel, data, ts)]

@@ -8,6 +8,7 @@ import ssl
 import json
 import hashlib
 import websocket
+import hmac
 
 from btfxwss.zmq.connection import WebSocketConnection
 
@@ -20,19 +21,20 @@ def FakeWebSocketConnection():
     conn.disconnect_called = mock.MagicMock(spec=Event)
     conn.paused = mock.MagicMock(spec=Event)
     conn.ctx = mock.MagicMock(spec=zmq.Context)
+    conn.ctx.socket.return_value = mock.MagicMock(spec=zmq.Socket)
     conn.socket = mock.MagicMock(spec=socket)
     conn.log = mock.MagicMock(spec=logging.Logger)
     return conn
 
 
-def test_channel_property():
-    conn = WebSocketConnection()
+def test_channel_property(FakeWebSocketConnection):
+    conn = FakeWebSocketConnection
     conn._channels = {1: 'hello'}
     assert conn.channels == ['hello']
 
 
-def test_reconnect_call():
-    conn = WebSocketConnection()
+def test_reconnect_call(FakeWebSocketConnection):
+    conn = FakeWebSocketConnection
     fake_socket = mock.MagicMock(spec=socket)
     conn.socket = fake_socket
     conn.connected.set()
@@ -43,51 +45,45 @@ def test_reconnect_call():
     assert not conn.connected.is_set()
 
 
-def test_disconnect_call():
-    conn = WebSocketConnection()
-    fake_socket = mock.MagicMock(spec=socket)
-    conn.socket = fake_socket
+def test_disconnect_call(FakeWebSocketConnection):
+    conn = FakeWebSocketConnection
 
     with mock.patch.object(conn, 'join') as fake_join:
         conn.disconnect()
         assert fake_join.called
-        assert fake_socket.close.called
-        assert not conn.reconnect_required.is_set()
-        assert not conn.connected.is_set()
-        assert conn.disconnect_called.is_set()
+        assert conn.socket.close.called
+        assert conn.reconnect_required.clear.called
+        assert conn.disconnect_called.set.called
 
 
-def test_send_ping():
+def test_send_ping(FakeWebSocketConnection):
     with mock.patch('threading.Timer') as mock_timer:
-        conn = WebSocketConnection()
-        conn.socket = mock.MagicMock(spec=socket)
+        conn = FakeWebSocketConnection
         conn.send_ping()
 
-        conn.socket.send.assert_called_with('{"event":"ping"}')
+        conn.socket.send.assert_called_with('{"event": "ping"}')
         mock_timer.assert_called_once_with(30, conn._check_pong)
         assert conn.pong_timer == mock_timer
         assert mock_timer.start.called
 
 
-def test_run():
-    conn = WebSocketConnection()
-    with mock.patch.object(conn, '_connect') as mock_connect:
-        conn.run()
-        assert mock_connect.called
+def test_run(FakeWebSocketConnection, mock):
+    conn = FakeWebSocketConnection
+    conn._connect = mock.MagicMock()
+    conn.run()
+    assert conn._connect.called
 
 
-def test_on_message():
+def test_on_message(FakeWebSocketConnection):
     pytest.fail("Finish this test!")
 
 
-def test_on_close():
-    conn = WebSocketConnection()
-    fake_event = mock.MagicMock(spec=Event)
-    conn.connected = fake_event
+def test_on_close(FakeWebSocketConnection):
+    conn = FakeWebSocketConnection
     with mock.patch.object(conn, '_stop_timers') as mock_stop_timers:
         conn._on_close(None)
         assert mock_stop_timers.called
-        assert fake_event.clear.called
+        assert conn.connected.clear.called
 
 
 def test_on_open(FakeWebSocketConnection):
@@ -116,9 +112,16 @@ def test_on_error(FakeWebSocketConnection):
 def test_internal_connect(FakeWebSocketConnection, mock):
     fake_websocket_app = mock.patch('websocket.WebSocketApp')
     conn = FakeWebSocketConnection
-    conn.publisher = mock.MagicMock(spec=socket)
+
+    # Set reconnect and disconnect events to prevent _connect
+    # to move into second while loop for reconnects.
     conn.reconnect_required.is_set.return_value = False
+    conn.disconnect_called.is_set.return_value = True
     conn._connect()
+
+    conn.ctx.socket.assert_called_once_with(zmq.PUB)
+    conn.publisher.bind.assert_called_once_with(conn.zmq_addr)
+
     fake_websocket_app.assert_called_once_with(
         conn.url, on_open=conn._on_open, on_message=conn._on_message, on_error=conn._on_error,
         on_close=conn._on_close
@@ -132,7 +135,7 @@ def test_internal_connect(FakeWebSocketConnection, mock):
     assert conn.ctx.destroy.called
 
 
-def test_subscribe():
+def test_subscribe(FakeWebSocketConnection):
     pytest.fail("Finish this test!")
 
 
@@ -152,10 +155,10 @@ def test_stop_timers(FakeWebSocketConnection):
 def test_start_timers(FakeWebSocketConnection):
     fake_timer = mock.patch('threading.Timer')
     conn = FakeWebSocketConnection
-    conn._start_timers()
     with mock.patch.object(conn, '_stop_timers') as fake_stop_timers:
+        conn._start_timers()
         conn.log.debug.assert_called_with('_start_timers(): Resetting timers..')
-        fake_stop_timers.assert_called_once()
+        assert fake_stop_timers.call_count == 1
         fake_timer.assert_called_with(conn.ping_interval, conn.send_ping)
         fake_timer.assert_called_with(conn.connection_timeout, conn._connection_timed_out)
         assert fake_timer.start.call_count == 2
@@ -179,18 +182,20 @@ def test_check_pong(FakeWebSocketConnection):
 
 def test_send(FakeWebSocketConnection, mock):
     fake_hmac_new = mock.patch('hmac.new')
+    fake_hmac_new.return_value = hmac.HMAC(b'ok')
     fake_hmac_hexdigest = mock.patch('hmac.HMAC.hexdigest')
+    fake_hmac_hexdigest.return_value = 'ok'
     expected_auth_payload = {'event': 'auth', 'apiKey': 'api_key', 'authSig': 'ok',
                              'authPayload': 'AUTH1000000', 'authNonce': '1000000'}
-    expected_kwargs_payload = ['this', 'is', 'a', 'list']
-    expected_list_data_payload = {'pair': 'BTC-USD', 'price': '10.0', 'size': '1.0'}
+    expected_list_data_payload = ['this', 'is', 'a', 'list']
+    expected_kwargs_payload = {'pair': 'BTC-USD', 'price': '10.0', 'size': '1.0'}
 
     conn = FakeWebSocketConnection
     with mock.patch('time.time', return_value=1):
         json_payload = conn._send(api_key='api_key', secret='secret', auth=True)
         assert json.loads(json_payload) == expected_auth_payload
         fake_hmac_new.assert_called_with('secret'.encode(), 'AUTH1000000'.encode(), hashlib.sha384)
-        fake_hmac_hexdigest.assert_called_with('ok')
+        assert fake_hmac_hexdigest.called
 
     json_payload = conn._send(list_data=['this', 'is', 'a', 'list'])
     assert json.loads(json_payload) == expected_list_data_payload
@@ -199,16 +204,18 @@ def test_send(FakeWebSocketConnection, mock):
     assert json.loads(json_payload) == expected_kwargs_payload
 
     assert conn.socket.send.call_count == 3
-    conn.socket.send.assert_called_with(json.dumps(expected_auth_payload))
-    conn.socket.send.assert_called_with(json.dumps(expected_list_data_payload))
-    conn.socket.send.assert_called_with(json.dumps(expected_kwargs_payload))
+
+    expected_payloads = [expected_auth_payload, expected_kwargs_payload, expected_list_data_payload]
+    for call in conn.socket.send.call_args_list:
+        args, kwargs = call
+        assert json.loads(args[0]) in expected_payloads
 
     assert conn.log.debug.call_count == 3
 
-    conn.socket.send.return_value = websocket.WebSocketConnectionClosedException()
-    conn.send({})
+    conn.socket.send.side_effect = websocket.WebSocketConnectionClosedException()
+    conn._send({})
     conn.log.error.assert_called_with(
-        '_send(): Did not send out payload %s - client not connected.' % {}
+        '_send(): Did not send out payload %s - client not connected.', {}
     )
 
 
