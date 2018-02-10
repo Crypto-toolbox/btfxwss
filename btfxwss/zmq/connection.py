@@ -324,6 +324,7 @@ class WebSocketConnection(Thread):
         self.log.debug("_send(): Sending payload to API: %s", payload)
         try:
             self.socket.send(payload)
+            return payload
         except websocket.WebSocketConnectionClosedException:
             self.log.error("_send(): Did not send out payload %s - client not connected. ", kwargs)
 
