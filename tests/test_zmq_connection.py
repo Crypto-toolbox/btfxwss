@@ -113,9 +113,8 @@ def test_on_error(FakeWebSocketConnection):
     assert conn.connected.clear.called
 
 
-@mock.patch('websocket.WebSocketApp')
-def test_internal_connect(FakeWebSocketConnection, *args):
-    fake_websocket_app, *_ = args
+def test_internal_connect(FakeWebSocketConnection, mock):
+    fake_websocket_app = mock.patch('websocket.WebSocketApp')
     conn = FakeWebSocketConnection
     conn.publisher = mock.MagicMock(spec=socket)
     conn.reconnect_required.is_set.return_value = False
@@ -150,9 +149,8 @@ def test_stop_timers(FakeWebSocketConnection):
     conn.log.debug.assert_called_with("_stop_timers(): Timers stopped.")
 
 
-@mock.patch('threading.Timer')
-def test_start_timers(FakeWebSocketConnection, *args):
-    fake_timer, *_ = args
+def test_start_timers(FakeWebSocketConnection):
+    fake_timer = mock.patch('threading.Timer')
     conn = FakeWebSocketConnection
     conn._start_timers()
     with mock.patch.object(conn, '_stop_timers') as fake_stop_timers:
@@ -163,7 +161,7 @@ def test_start_timers(FakeWebSocketConnection, *args):
         assert fake_timer.start.call_count == 2
 
 
-def test_check_pong(FakeWebSocketConnection, ):
+def test_check_pong(FakeWebSocketConnection):
     conn = FakeWebSocketConnection
     conn.pong_timer = mock.MagicMock(spec=Timer)
 
