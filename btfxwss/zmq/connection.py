@@ -54,19 +54,15 @@ class WebSocketConnection(Thread):
         :param api_secret: API secret
         """
         # Channel labels for subscriptions
-        self._channels = {'0': 'account'}
-        self.private_channels = {'os': 'Orders', 'ps': 'Positions', 'hos': 'Historical Orders',
-                                 'hts': 'Trades', 'fls': 'Loans', 'te': 'Trades', 'tu': 'Trades',
-                                 'ws': 'Wallets', 'bu': 'Balance Info', 'wu': 'Wallets',
-                                 'miu': 'Margin Info', 'fos': 'Offers', 'fiu': 'Funding Info',
-                                 'fcs': 'Credits', 'hfos': 'Historical Offers',
-                                 'hfcs': 'Historical Credits', 'hfls': 'Historical Loans',
-                                 'htfs': 'Funding Trades', 'n': 'Notifications', 'on': 'Order New',
-                                 'ou': 'Order Update', 'oc': 'Order Cancel', 'ats': 'ATS'}
+        self._channels = {}
+
+        # Attribute storing conf calls
+        self._config = None
 
         # Authentication details
         self.key = api_key
         self.secret = api_secret
+        self._authenticated = False
 
         # ZeroMQ Publisher Socket used to relay data
         self.ctx = ctx or zmq.Context().instance()
@@ -164,16 +160,13 @@ class WebSocketConnection(Thread):
             log.exception(e)
             raise
 
-        # Handle data
-        if isinstance(data, dict):
+        # Process incoming data package
+        if isinstance(data, dict) or data[0] == 'hb':
             # This is a system message
             self._system_handler(data, received_at)
         else:
             # This is a list of data
-            if data[1] == 'hb':
-                self._heartbeat_handler()
-            else:
-                self._data_handler(data, received_at)
+            self._data_handler(data, received_at)
 
         # We've received data, reset timers
         self._start_timers()
@@ -306,7 +299,7 @@ class WebSocketConnection(Thread):
             self.log.debug("_check_pong(): Pong received in time.")
             self.pong_received = False
         else:
-            self.log.debug("_check_pong(): Pong not received in time."
+            self.log.debug("_check_pong(): Pong not received in time. "
                            "Issuing reconnect..")
             self.reconnect()
 
@@ -317,7 +310,7 @@ class WebSocketConnection(Thread):
         :return:
         """
         if auth:
-            nonce = str(int(time.time() * 10000000))
+            nonce = str(int(time.time() * 1000000))
             auth_string = 'AUTH' + nonce
             auth_sig = hmac.new(secret.encode(), auth_string.encode(),
                                 hashlib.sha384).hexdigest()
@@ -356,18 +349,6 @@ class WebSocketConnection(Thread):
         self.log.debug("_connection_timed_out(): Fired! Issuing reconnect..")
         self.reconnect()
 
-    def _pause(self):
-        """Pause the connection."""
-        self.log.debug("_pause(): Setting paused() Flag!")
-        self.paused.set()
-
-    def _unpause(self):
-        """Unpause the connection and resubscribe."""
-        self.log.debug("_unpause(): Clearing paused() Flag!")
-        self.paused.clear()
-        self.log.debug("_unpause(): Re-subscribing softly..")
-        self._subscribe()
-
     """SYSTEM MESSAGE HANDLER."""
 
     def _system_handler(self, data, ts):
@@ -381,137 +362,96 @@ class WebSocketConnection(Thread):
         :return:
         """
         log.debug("_system_handler(): Received a system message: %s", data)
-        # Unpack the data
-        event = data.pop('event')
-        if event == 'pong':
-            log.debug("_system_handler(): Distributing %s to _pong_handler..",
-                      data)
-            self._pong_handler()
-        elif event == 'info':
-            log.debug("_system_handler(): Distributing %s to _info_handler..",
-                      data)
-            self._info_handler(data)
-        elif event == 'error':
-            log.debug("_system_handler(): Distributing %s to _error_handler..",
-                      data)
-            self._error_handler(data)
-        elif event in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
-            log.debug("_system_handler(): Distributing %s to "
-                      "_response_handler..", data)
-            self._response_handler(event, data, ts)
-        else:
-            self.log.error("Unhandled event: %s, data: %s", event, data)
 
-    def _heartbeat_handler(self):
+        # Assert if this is a heartbeat
+        if isinstance(data, list):
+            self._heartbeat_handler(data)
+            return
+
+        event = data.get('event', None)
+        code = data.get('code', None)
+        if code:
+            if code > 19999:
+                return self._handle_EVT(data, ts)
+            else:
+                return self._handle_ERR(data, ts)
+
+        if event == 'pong':
+            self.log.debug("[PONG] Received!")
+            self.pong_received = True
+            return
+        elif event == 'info':
+            if 'version' in data:
+                self.log.info("[INFO] Connected to API Version %s", data['version'])
+                return
+
+        elif event in ('subscribed', 'unsubscribed'):
+            return self._subscription_handler(event, data, ts)
+
+        elif event in ('auth', 'unauth'):
+            if event == 'auth':
+                self._authenticated = data.get('userId', None)
+            else:
+                self._authenticated = False
+            return
+
+        elif event == 'conf':
+            self.log.info("[CONFIG] Configuration set: %s", data)
+            self._config = data
+            return
+
+        self.log.error("Unhandled event: %s, data: %s", event, data)
+
+    def _heartbeat_handler(self, data):
         """Handle heartbeat messages."""
         # Restart our timers since we received some data
         self.log.debug("_heartbeat_handler(): Received a heart beat "
                        "from connection!")
         self._start_timers()
 
-    def _pong_handler(self):
-        """Handle a pong response."""
-        # We received a Pong response to our Ping!
-        self.log.debug("_pong_handler(): Received a Pong message!")
-        self.pong_received = True
-
-    def _info_handler(self, data):
-        """Handle INFO messages from the API and issue relevant actions."""
-        codes = {'20051': self.reconnect, '20060': self._pause,
-                 '20061': self._unpause}
-        info_message = {'20051': 'Stop/Restart websocket server '
-                                 '(please try to reconnect)',
-                        '20060': 'Refreshing data from the trading engine; '
-                                 'please pause any acivity.',
-                        '20061': 'Done refreshing data from the trading engine.'
-                                 ' Re-subscription advised.'}
-        try:
-            self.log.info(info_message[data['code']])
-            codes[data['code']]()
-        except KeyError:
-            self.log.warning("_info_handler(): Unknown message format received: %s", data)
-            return
-
-    def _error_handler(self, data):
-        """Handle Error messages and log them accordingly."""
-        errors = {10000: 'Unknown event',
-                  10001: 'Unknown pair',
-                  10300: 'Subscription Failed (generic)',
-                  10301: 'Already Subscribed',
-                  10302: 'Unknown channel',
-                  10400: 'Subscription Failed (generic)',
-                  10401: 'Not subscribed',
-                  }
-        try:
-            self.log.error(errors[data['code']])
-        except KeyError:
-            self.log.error("Received unknown error Code in message %s! "
-                           "Reconnecting..", data)
-            self.reconnect()
-
-    def _response_handler(self, event, data, ts):
-        """Handle server responses.
-
-        Takes care of setting up new channel labels to broadcast new subscription under, or
-        removes them if the response was a confirmation of unsubscribing.
-
-        :param event: event to handle
-        :param data: payload to process
-        :param ts: timetamp at which the data was received
-        :return:
-        """
-        self.log.debug("_response_handler(): Processing event %s and related data (%s) ..",
-                       event, data)
+    def _subscription_handler(self, event, data, ts):
         if event == 'subscribed':
-            config = None
-            if 'symbol' in data:
-                sym = data['symbol']
-            elif 'pair' in data:
-                sym = data['pair']
-            else:
-                _, config, sym = data['key'].split(':')
-
-            sym = sym[1:] if sym.startswith('t') else sym
-
-            if not config:
-                if 'prec' in data:
-                    if data['prec'] == 'R0':
-                        config = 'raw'
-                    else:
-                        config = 'aggregated'
-
-            self._channels[data['chanId']] = data['channel'] + '/' + sym
-            if config:
-                self._channels[data['chanId']] += '/' + config
-            self.log.info("_response_handler(): Registered new channel ID %s as channel %s",
-                          data['chanId'], self._channels[data['chanId']])
-
+            chan_name = data.get('channel')
+            chan_id = data.get('chanId')
+            data.pop('event', None)
+            channel_suffix = ' '.join([key + '=' + value
+                                       for key, value
+                                       in sorted(data.items(), key=lambda x: x[0])])
+            full_name = chan_name + ' ' + channel_suffix
+            self._channels[chan_id] = full_name
+            self.log.info("[SUBSCRIBE] Successfully subscribed to channel %s", full_name)
+            return
         elif event == 'unsubscribed':
             try:
                 self._channels.pop(data['chanId'])
             except KeyError:
-                self.log.warning("_response_handler(): Attempt to remove channel ID %s from self."
+                self.log.warning("[UNSUBSCRIBE] Attempt to remove channel ID %s from self."
                                  "channels failed: No such channel ID was registered!",
                                  data['chanId'])
-            self.log.info("_response_handler(): Removed channel registered with channel ID %s",
+            self.log.info("[UNSUBSCRIBE] Removed channel registered with channel ID %s",
                           data['chanId'])
+            return
+        self.log.error("Unhandled subscription event: %s, data: %s", event, data)
 
-        elif event == 'conf':
-            self.log.info("_response_handler(): Configuration set: %s", data)
-        elif event == 'auth':
-            if data['status'] == 'OK':
-                self._channels[0] = 'account'
-                self.log.info("_response_handler(): Authentication activated: %s", data)
-            else:
-                self.log.error("_response_handler(): Authentication failed! %s", data)
-        elif event == 'unauth':
-            try:
-                self._channels.pop(0)
-            except KeyError:
-                self.log.warning("_response_handler(): Attempt to remove channel ID %s from self."
-                                 "channels failed: No such channel ID was registered!",
-                                 data['chanId'])
-            self.log.info("_response_handler(): Authentication deactivated: %s", data)
+    def _handle_ERR(self, data, ts):
+        self.log.error("[ERROR] %s: %s", data['code'], data['msg'])
+
+    def _handle_EVT(self, data, ts):
+        code = data['code']
+        if code == 20051:
+            # stop
+            self.log.info("[EVT_STOP] - WebSocket Server stopping..")
+            self.paused.set()
+        elif code == 20060:
+            # syncing
+            self.log.info("[EVT_RESYNC_START] - Websocket Server syncing...")
+            pass
+        elif code == 20061:
+            # reconnect
+            self.paused.clear()
+            self.log.info("[EVT_RESYNC_STOP] - WebSocket Server sync complete.")
+        else:
+            self.log.error("Unhandled ERR message %s", data)
 
     def _data_handler(self, data, ts):
         """Handle data messages by passing them up to the client."""
