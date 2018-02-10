@@ -35,14 +35,11 @@ def test_channel_property(FakeWebSocketConnection):
 
 def test_reconnect_call(FakeWebSocketConnection):
     conn = FakeWebSocketConnection
-    fake_socket = mock.MagicMock(spec=socket)
-    conn.socket = fake_socket
-    conn.connected.set()
 
     conn.reconnect()
-    assert fake_socket.close.called
-    assert conn.reconnect_required.is_set()
-    assert not conn.connected.is_set()
+    assert conn.socket.close.called
+    assert conn.reconnect_required.set.called
+    assert conn.connected.clear.called
 
 
 def test_disconnect_call(FakeWebSocketConnection):
@@ -56,15 +53,16 @@ def test_disconnect_call(FakeWebSocketConnection):
         assert conn.disconnect_called.set.called
 
 
-def test_send_ping(FakeWebSocketConnection):
+def test_send_ping(FakeWebSocketConnection, mock):
+    conn = FakeWebSocketConnection
+
     with mock.patch('threading.Timer') as mock_timer:
-        conn = FakeWebSocketConnection
         conn.send_ping()
 
         conn.socket.send.assert_called_with('{"event": "ping"}')
-        mock_timer.assert_called_once_with(30, conn._check_pong)
-        assert conn.pong_timer == mock_timer
-        assert mock_timer.start.called
+        assert isinstance(conn.pong_timer, Timer)
+        assert conn.pong_timer.is_alive()
+        conn.pong_timer.cancel()
 
 
 def test_run(FakeWebSocketConnection, mock):
@@ -127,7 +125,7 @@ def test_internal_connect(FakeWebSocketConnection, mock):
         on_close=conn._on_close
     )
     conn.socket.run_forever.assert_called_with(
-        sslopt={'ca_certs': ssl.get_default_verify_paths().ca_certs}
+        sslopt={'ca_certs': ssl.get_default_verify_paths().cafile}
     )
     conn.log.debug.assert_called_with('_connect(): Starting Connection..')
     assert conn.socket.close.called
@@ -149,19 +147,23 @@ def test_stop_timers(FakeWebSocketConnection):
     assert conn.ping_timer.cancel.called
     assert conn.connection_timer.cancel.called
     assert conn.pong_timer.cancel.called
-    conn.log.debug.assert_called_with("_stop_timers(): Resetting timers..")
+    conn.log.debug.assert_called_once_with("_stop_timers(): Timers stopped.")
 
 
 def test_start_timers(FakeWebSocketConnection):
-    fake_timer = mock.patch('threading.Timer')
     conn = FakeWebSocketConnection
     with mock.patch.object(conn, '_stop_timers') as fake_stop_timers:
         conn._start_timers()
-        conn.log.debug.assert_called_with('_start_timers(): Resetting timers..')
+        conn.log.debug.assert_called_once_with('_start_timers(): Resetting timers..')
         assert fake_stop_timers.call_count == 1
-        fake_timer.assert_called_with(conn.ping_interval, conn.send_ping)
-        fake_timer.assert_called_with(conn.connection_timeout, conn._connection_timed_out)
-        assert fake_timer.start.call_count == 2
+        assert isinstance(conn.connection_timer, Timer)
+        assert isinstance(conn.ping_timer, Timer)
+        assert conn.ping_timer.interval == conn.ping_interval
+        assert conn.ping_timer.function == conn.send_ping
+        assert conn.connection_timer.interval == conn.connection_timeout
+        assert conn.connection_timer.function == conn._connection_timed_out
+    conn.ping_timer.cancel()
+    conn.connection_timer.cancel()
 
 
 def test_check_pong(FakeWebSocketConnection):
