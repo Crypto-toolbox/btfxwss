@@ -1,4 +1,3 @@
-=======
 BTFXWSS
 =======
 
@@ -17,22 +16,21 @@ Please note that you must take care of handling data in the queues yourself!
 Not doing so will eventually result in `MemoryError`s, since the queues
 do not have a maximum length defined.
 
-============
 Installation
-============
+------------
 
 Via pip:
-```
-pip install btfxwss
-```
 
+.. code-block:: bash
 
-=====
+    pip install btfxwss
+
 Usage
-=====
+-----
 
 Starting a session and subscribing to channels.
 
+.. code-block:: python
 
     from btfxwss import BtfxWss
     
@@ -67,6 +65,8 @@ Starting a session and subscribing to channels.
 
 Accessing data stored in BtfxWss:
 
+.. code-block:: python
+
     ticker_q = wss.tickers('BTCUSD')  # returns a Queue object for the pair.
     while not ticker_q.empty():
         print(ticker_q.get())
@@ -74,30 +74,33 @@ Accessing data stored in BtfxWss:
 
 Unsubscribing from channels:
 
+.. code-block:: python
+
     wss.ticker('BTCUSD', unsubscribe=True)
     wss.ticker('BTCEUR', unsubscribe=True)
 
 
 Shutting down the client:
 
+.. code-block:: python
 
     wss.stop()
 
 Your help is required
-=====================
+'''''''''''''''''''''
 
 If you find any bugs, error or have feature requests, please don't hesitate to open an issue.
 Be as descriptive as possible, and I'll look into the matter as soon as I can.
 
 Thanks
-======
+''''''
 
-A big thanks to the devs providing the `websocket-client <https://github.com/websocket-client/websocket-client>` library,
+A big thanks to the devs providing the websocket-client_ library,
 as well ekulyk for providing the `PythonPusherClient`, which I used as a reference
 for the connection class. And finally, a big thanks to all the people submitting
 issues, discussing solutions and simply starring the project - you all help me
 stay excited and motivated for this project! Cheers to you.
 
-
+.. _websocket-client: https://github.com/websocket-client/websocket-client
 
 
