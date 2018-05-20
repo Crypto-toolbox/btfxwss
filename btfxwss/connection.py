@@ -407,15 +407,15 @@ class WebSocketConnection(Thread):
         :param data:
         :param ts:
         """
-        info_message = {'20051': 'Stop/Restart websocket server '
+        info_message = {20051: 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
-                        '20060': 'Refreshing data from the trading engine; '
+                        20060: 'Refreshing data from the trading engine; '
                                  'please pause any acivity.',
-                        '20061': 'Done refreshing data from the trading engine.'
+                        20061: 'Done refreshing data from the trading engine.'
                                  ' Re-subscription advised.'}
 
-        codes = {'20051': self.reconnect, '20060': self._pause,
-                 '20061': self._unpause}
+        codes = {20051: self.reconnect, 20060: self._pause,
+                 20061: self._unpause}
 
         if 'version' in data:
             self.log.info("API version: %i", data['version'])
