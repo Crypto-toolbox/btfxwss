@@ -158,7 +158,8 @@ class WebSocketConnection(Thread):
                                 http_proxy_port=self.http_proxy_port,
                                 http_proxy_auth=self.http_proxy_auth,
                                 http_no_proxy=self.http_no_proxy)
-
+            else:
+                break
     def run(self):
         """Main method of Thread.
 
