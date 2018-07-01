@@ -427,12 +427,14 @@ class BtfxWss:
         self.channel_configs.pop(identifier)
 
     def config(self, decimals_as_strings=True, ts_as_dates=False,
-               sequencing=False, **kwargs):
+               sequencing=False, ts=False, **kwargs):
         """Send configuration to websocket server
 
         :param decimals_as_strings: bool, turn on/off decimals as strings
         :param ts_as_dates: bool, decide to request timestamps as dates instead
         :param sequencing: bool, turn on sequencing
+	:param ts: bool, request the timestamp to be appended to every array
+               sent by the server
         :param kwargs:
         :return:
         """
@@ -441,6 +443,8 @@ class BtfxWss:
             flags += 8
         if ts_as_dates:
             flags += 32
+        if ts:
+            flags += 32768
         if sequencing:
             flags += 65536
         q = {'event': 'conf', 'flags': flags}
