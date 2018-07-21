@@ -143,6 +143,8 @@ class WebSocketConnection(Thread):
                         http_proxy_auth=self.http_proxy_auth,
                         http_no_proxy=self.http_no_proxy)
 
+        # stop outstanding ping/pong timers
+        self._stop_timers()
         while self.reconnect_required.is_set():
             if not self.disconnect_called.is_set():
                 self.log.info("Attempting to connect again in %s seconds."
@@ -153,6 +155,7 @@ class WebSocketConnection(Thread):
                 # We need to set this flag since closing the socket will
                 # set it to False
                 self.socket.keep_running = True
+                self.socket.sock = None
                 self.socket.run_forever(sslopt=self.sslopt,
                                 http_proxy_host=self.http_proxy_host,
                                 http_proxy_port=self.http_proxy_port,
