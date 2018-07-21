@@ -449,6 +449,7 @@ class BtfxWss:
             flags += 65536
         q = {'event': 'conf', 'flags': flags}
         q.update(kwargs)
+        self.conn.bitfinex_config = q
         self.conn.send(**q)
 
     @is_connected
