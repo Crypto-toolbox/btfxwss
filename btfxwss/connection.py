@@ -93,6 +93,8 @@ class WebSocketConnection(Thread):
         # Call init of Thread and pass remaining args and kwargs
         Thread.__init__(self)
         self.daemon = True
+        # Use default Bitfinex websocket configuration parameters
+        self.bitfinex_config = None
 
     def disconnect(self):
         """Disconnects from the websocket connection and joins the Thread.
@@ -163,6 +165,7 @@ class WebSocketConnection(Thread):
                                 http_no_proxy=self.http_no_proxy)
             else:
                 break
+
     def run(self):
         """Main method of Thread.
 
@@ -486,6 +489,9 @@ class WebSocketConnection(Thread):
         :param soft: if True, unsubscribes first.
         :return: None
         """
+        # Restore non-default Bitfinex websocket configuration
+        if self.bitfinex_config:
+            self.send(**self.bitfinex_config)
         q_list = []
         while True:
             try:
