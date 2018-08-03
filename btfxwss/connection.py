@@ -54,13 +54,13 @@ class WebSocketConnection(Thread):
         self.socket = None
         self.url = url if url else 'wss://api.bitfinex.com/ws/2'
         self.sslopt = sslopt if sslopt else {}
-        
+
         # Proxy Settings
         self.http_proxy_host = http_proxy_host
         self.http_proxy_port = http_proxy_port
         self.http_proxy_auth = http_proxy_auth
         self.http_no_proxy = http_no_proxy
-        
+
         # Dict to store all subscribe commands for reconnects
         self.channel_configs = OrderedDict()
 
@@ -414,7 +414,18 @@ class WebSocketConnection(Thread):
         :param data:
         :param ts:
         """
-        info_message = {20051: 'Stop/Restart websocket server '
+
+        def raise_exception():
+            """Log info code as error and raise a ValueError."""
+            self.log.error("%s: %s", data['code'], info_message[data['code']])
+            raise ValueError("%s: %s" % (data['code'], info_message[data['code']]))
+
+        if 'code' not in data and 'version' in data:
+            self.log.info('Initialized Client on API Version %s', data['version'])
+            return
+
+        info_message = {20000: 'Invalid User given! Please make sure the given ID is correct!',
+                        20051: 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
                         20060: 'Refreshing data from the trading engine; '
                                  'please pause any acivity.',

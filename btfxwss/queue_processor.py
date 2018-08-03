@@ -61,7 +61,7 @@ class QueueProcessor(Thread):
         self.raw_books = defaultdict(Queue)
         self.trades = defaultdict(Queue)
         self.candles = defaultdict(Queue)
-        self.account = defaultdict(Queue)
+        self.account = Queue()
 
         # Sentinel Event to kill the thread
         self._stopped = Event()
@@ -69,26 +69,6 @@ class QueueProcessor(Thread):
         # Internal Logging facilities
         self.log = logging.getLogger(self.__module__)
         self.log.setLevel(level=logging.INFO if not log_level else log_level)
-
-        # Translation dict for Account channels
-        self.account_channel_names = {'os': 'Orders', 'ps': 'Positions',
-                                      'hos': 'Historical Orders',
-                                      'hts': 'Trades', 'fls': 'Loans',
-                                      'te': 'Trades', 'tu': 'Trades',
-                                      'ws': 'Wallets', 'bu': 'Balance Info',
-                                      'wu': 'Wallets',
-                                      'miu': 'Margin Info', 'fos': 'Offers',
-                                      'fiu': 'Funding Info',  'fcs': 'Credits',
-                                      'hfos': 'Historical Offers', 
-                                      'hfcs': 'Historical Credits',
-                                      'hfls': 'Historical Loans',
-                                      'htfs': 'Funding Trades',
-                                      'n': 'Notifications', 'ats': 'ATS',
-                                      'on': 'Order New', 'ou': 'Order Update', 'oc': 'Order Cancel',
-                                      'pn': 'Position New', 'pu': 'Position Update', 'pc': 'Position Cancel',
-                                      'fon': 'Funding Offer New', 'fou': 'Funding Offer Update', 'foc': 'Funding Offer Cancel',
-                                      'fcn': 'Funding Credit New', 'fcu': 'Funding Credit Update', 'fcc': 'Funding Offer Cancel',
-                                      'fln': 'Funding Loan New', 'flu': 'Funding Loan Update', 'flc': 'Funding Loan Cancel'}
 
     def join(self, timeout=None):
         """Set sentinel for run() method and join thread.
@@ -277,11 +257,10 @@ class QueueProcessor(Thread):
         :param ts:
         :return:
         """
-
-        chan_id, *data = data
-        channel_identifier = self.account_channel_names[data[0]]
-        entry = (data, ts)
-        self.account[channel_identifier].put(entry)
+        # channel_short, data
+        chan_id, channel_short_name, *data = data
+        entry = (channel_short_name, data, ts)
+        self.account.put(entry)
 
     def _handle_ticker(self, dtype, data, ts):
         """Adds received ticker data to self.tickers dict, filed under its channel
