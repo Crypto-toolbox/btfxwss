@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='btfxwss', version='1.2.1', author='Nils Diefenbach',
       author_email='23okrs20+pypi@mykolab.com',
