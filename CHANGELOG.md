@@ -1,3 +1,16 @@
+# 1.2.1
+
+##Fixed
+- Issue #152
+
+# 1.2.0
+
+## Fixed
+- Issue #111
+
+## Added
+- Support for several channel types.
+
 # 1.1.4
 
 ## Fixed
@@ -30,8 +43,6 @@ to call a client method before the connection was established
 
 ## Fixed
 - Fixed an issue where identifier in the queue processor's `channel_directory` attribute would store incorrect keys for candle data. 
-- Fixed issue #18
-
 
 # 1.0
 
