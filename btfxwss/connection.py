@@ -205,9 +205,17 @@ class WebSocketConnection(Thread):
         self._start_timers()
 
     def _on_close(self, ws, *args):
-        self.log.info("Connection closed")
+
         self.connected.clear()
         self._stop_timers()
+
+        if not self.disconnect_called.is_set():
+            self.log.info("Connection is closed by Bitfinex.")
+            for arg in args:
+                self.log.info("Closing reason: %s" % arg)
+            self.reconnect_required.set()
+        else:
+            self.log.info("Connection is closed normally.")
 
     def _on_open(self, ws):
         self.log.info("Connection opened")
