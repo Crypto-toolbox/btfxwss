@@ -5,14 +5,23 @@ import time
 import ssl
 import hashlib
 import hmac
+
 from multiprocessing import Queue
 from threading import Thread, Event, Timer
 from collections import OrderedDict
+from typing import Dict, Tuple, List, Union
 
 # Import Third-Party
-import websocket
+import websocket  # Thread-based websockets
+import websockets  # Asyncio-based websockets
 
 # Import Homebrew
+from btfxwss.exceptions import (
+    BitfinexError,
+    BitfinexInfo,
+    UnhandledEvent,
+    NoPongReceived,
+)
 
 # Init Logging Facilities
 log = logging.getLogger(__name__)
@@ -399,7 +408,7 @@ class WebSocketConnection(Thread):
 
         codes = {'200000': raise_exception, '20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
-        info_message = {20000: 'Invalid User given! Please make sure the given ID is correct!',
+        info_message = {20000: ',
                         20051: 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
                         20060: 'Refreshing data from the trading engine; '
@@ -476,3 +485,136 @@ class WebSocketConnection(Thread):
         else:
             for identifier, q in q_list:
                 self.channel_configs[identifier] = q
+
+
+class BitfinexEvents:
+    """Container class for Bitfinex events."""
+
+    PONG = 'pong'
+    INFO = 'info'
+    ERROR = 'error'
+    SUBSCRIBED = 'subscribed'
+    UNSUBSCRIBED = 'unsubscribed'
+    CONFIG = 'conf'
+    LOGIN = 'auth'
+    LOGOUT = 'unauth'
+    HEARTBEAT = 'hb'
+
+    #: These events are result of a request sent by the client.
+    RESPONSES = [
+        SUBSCRIBED,
+        UNSUBSCRIBED,
+        CONFIG,
+        LOGIN,
+        LOGOUT,
+    ]
+
+    #: All events known to this container class.
+    __all__ = [
+        PONG,
+        INFO,
+        ERROR,
+        SUBSCRIBED,
+        UNSUBSCRIBED,
+        CONFIG,
+        LOGOUT,
+        LOGIN,
+        HEARTBEAT,
+    ]
+
+
+class BtfxWSSProtocol(websockets.WebSocketClientProtocol):
+    """Bitfinex Websocket Protocol based on the websockets library."""
+
+    #: Websocket address for the bitfinex websocket API.
+    ADDR = "wss://api.bitfinex.com/ws/2"
+
+    #: Mapping from info codes to info messages.
+    INFO_CODES = {
+        20000: 'Invalid User given! Please make sure the given ID is correct!',
+        20051: 'Stop/Restart websocket server '
+               '(please try to reconnect)',
+        20060: 'Refreshing data from the trading engine; '
+               'please pause any acivity.',
+        20061: 'Done refreshing data from the trading engine.'
+               ' Re-subscription advised.'
+    }
+
+    #: Mapping from error codes to error descriptions.
+    ERROR_CODES = {
+        10000: 'Unknown event',
+        10001: 'Unknown pair',
+        10300: 'Subscription Failed (generic)',
+        10301: 'Already Subscribed',
+        10302: 'Unknown channel',
+        10400: 'Subscription Failed (generic)',
+        10401: 'Not subscribed',
+    }
+
+    def recv(self) -> Tuple[str, Union[List, Dict], float]:
+        """Receive data from the websocket.
+
+        :raises BitfinexError:
+        :raises BitfinexInfo:
+        :raises UnhandledEvent:
+        :rtype: Tuple[str, Union[List, Dict], float]
+        """
+        try:
+            json_msg, recv_at = super(BtfxWSSProtocol, self).recv(), time.time()
+        except websockets.ConnectionClosed:
+            raise
+
+        parsed_msg = json.loads(json_msg)
+
+        # Dicts are system messages, lists are data.
+        if isinstance(parsed_msg, dict):
+            return self._system_event_handler(parsed_msg, recv_at)
+        else:
+            channel, *data = parsed_msg
+            if data == 'hb':
+                return self._hb_handler(channel, parsed_msg, recv_at)
+            return channel, data, recv_at
+
+    def _system_event_handler(self, msg: dict, recv_at: float) -> Tuple[str, Dict, float]:
+        """Handle Bitfinex System Events.
+
+        :param dict msg: The JSON-decoded system message received from bitfinex.
+        :param float recv_at: Unix timestamp at which this message was received.
+        :raises BitfinexInfo: if the event is of type ``info`` and a code is present.
+        :raises BitfinexError: if the event is of type ``error``
+        :raises UnhandledEvent:
+            If the event wasn't handled because it's unknown to us.
+        :return: event name, json-decoded message, timestamp tuple.
+        :rtype: Tuple[str, dict, float]
+        """
+        event = msg.pop('event')
+        code = msg.get('code')
+        version = msg.get('version')
+
+        if version:
+            log.info("Initialized client on API Version {}".format(version))
+
+        if event is BitfinexEvents.PONG:
+            self.pong_received = True
+        elif event is BitfinexEvents.INFO and code:
+            raise BitfinexInfo(code, self.INFO_CODES[code])
+        elif event is BitfinexEvents.ERROR:
+            raise BitfinexError(code, self.ERROR_CODES[code])
+        elif event not in BitfinexEvents.__all__:
+            raise UnhandledEvent(msg)
+
+        return event, msg, recv_at
+
+    def _hb_handler(self, channel: str, msg: List, recv_at: float):
+        """Handle heartbeat messages.
+
+        Does nothing, by default.
+        """
+        return channel, msg, recv_at
+
+    async def _check_pong(self):
+        """Check if we received a PONG message from bitfinex."""
+        if not self.pong_received:
+            raise NoPongReceived(
+                "Expected pong after 30s, but did not receive any data!"
+            )
