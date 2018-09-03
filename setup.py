@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(name='btfxwss', version='1.2.0b5', author='Nils Diefenbach',
