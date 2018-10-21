@@ -331,7 +331,8 @@ class BtfxWss:
     @is_connected
     def update_order(self, **order_settings):
         """Update an Order via Websocket.
-         :param kwargs:
+
+        :param kwargs:
         :return:
         """
         self._send_auth_command('ou', order_settings)
