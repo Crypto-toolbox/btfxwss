@@ -1,2 +1,2 @@
-websocket-client==0.40.0
+websocket-client>0.49.0
 

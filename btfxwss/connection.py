@@ -9,19 +9,9 @@ import hmac
 from multiprocessing import Queue
 from threading import Thread, Event, Timer
 from collections import OrderedDict
-from typing import Dict, Tuple, List, Union
 
 # Import Third-Party
-import websocket  # Thread-based websockets
-import websockets  # Asyncio-based websockets
-
-# Import Homebrew
-from btfxwss.exceptions import (
-    BitfinexError,
-    BitfinexInfo,
-    UnhandledEvent,
-    NoPongReceived,
-)
+import websocket
 
 # Init Logging Facilities
 log = logging.getLogger(__name__)
@@ -92,10 +82,7 @@ class WebSocketConnection(Thread):
         self.daemon = True
 
     def disconnect(self):
-        """Disconnects from the websocket connection and joins the Thread.
-
-        :return:
-        """
+        """Disconnects from the websocket connection and joins the Thread."""
         self.log.debug("disconnect(): Disconnecting from API..")
         self.reconnect_required.clear()
         self.disconnect_called.set()
@@ -104,10 +91,7 @@ class WebSocketConnection(Thread):
         self.join(timeout=1)
 
     def reconnect(self):
-        """Issues a reconnection by setting the reconnect_required event.
-
-        :return:
-        """
+        """Issues a reconnection by setting the reconnect_required event."""
         # Reconnect attempt at self.reconnect_interval
         self.log.debug("reconnect(): Initialzion reconnect sequence..")
         self.connected.clear()
@@ -116,10 +100,7 @@ class WebSocketConnection(Thread):
             self.socket.close()
 
     def _connect(self):
-        """Creates a websocket connection.
-
-        :return:
-        """
+        """Creates a websocket connection."""
         self.log.debug("_connect(): Initializing Connection..")
         self.socket = websocket.WebSocketApp(
             self.url,
@@ -149,18 +130,12 @@ class WebSocketConnection(Thread):
                 self.socket.run_forever(sslopt=self.sslopt)
 
     def run(self):
-        """Main method of Thread.
-
-        :return:
-        """
+        """Main method of Thread."""
         self.log.debug("run(): Starting up..")
         self._connect()
 
     def _on_message(self, message):
-        """Handles and passes received data to the appropriate handlers.
-
-        :return:
-        """
+        """Handles and passes received data to the appropriate handlers."""
         self._stop_timers()
 
         raw, received_at = message, time.time()
@@ -191,7 +166,7 @@ class WebSocketConnection(Thread):
         self.connected.clear()
         self._stop_timers()
 
-    def _on_open(self):
+    def _on_open(self, *args):
         self.log.info("Connection opened")
         self.connected.set()
         self.send_ping()
@@ -206,10 +181,7 @@ class WebSocketConnection(Thread):
         self.connected.clear()
 
     def _stop_timers(self):
-        """Stops ping, pong and connection timers.
-
-        :return:
-        """
+        """Stops ping, pong and connection timers."""
         if self.ping_timer:
             self.ping_timer.cancel()
 
@@ -221,10 +193,7 @@ class WebSocketConnection(Thread):
         self.log.debug("_stop_timers(): Timers stopped.")
 
     def _start_timers(self):
-        """Resets and starts timers for API data and connection.
-
-        :return:
-        """
+        """Resets and starts timers for API data and connection."""
         self.log.debug("_start_timers(): Resetting timers..")
         self._stop_timers()
 
@@ -238,20 +207,14 @@ class WebSocketConnection(Thread):
         self.connection_timer.start()
 
     def send_ping(self):
-        """Sends a ping message to the API and starts pong timers.
-
-        :return:
-        """
+        """Sends a ping message to the API and starts pong timers."""
         self.log.debug("send_ping(): Sending ping to API..")
         self.socket.send(json.dumps({'event': 'ping'}))
         self.pong_timer = Timer(self.pong_timeout, self._check_pong)
         self.pong_timer.start()
 
     def _check_pong(self):
-        """Checks if a Pong message was received.
-
-        :return:
-        """
+        """Checks if a Pong message was received."""
         self.pong_timer.cancel()
         if self.pong_received:
             self.log.debug("_check_pong(): Pong received in time.")
@@ -263,11 +226,7 @@ class WebSocketConnection(Thread):
             self.reconnect()
 
     def send(self, api_key=None, secret=None, list_data=None, auth=False, **kwargs):
-        """Sends the given Payload to the API via the websocket connection.
-
-        :param kwargs: payload paarameters as key=value pairs
-        :return:
-        """
+        """Sends the given Payload to the API via the websocket connection."""
         if auth:
             nonce = str(int(time.time() * 10000000))
             auth_string = 'AUTH' + nonce
@@ -288,13 +247,7 @@ class WebSocketConnection(Thread):
             self.log.error("send(): Did not send out payload %s - client not connected. ", kwargs)
 
     def pass_to_client(self, event, data, *args):
-        """Passes data up to the client via a Queue().
-
-        :param event:
-        :param data:
-        :param args:
-        :return:
-        """
+        """Passes data up to the client via a Queue()."""
         self.q.put((event, data, *args))
 
     def _connection_timed_out(self):
@@ -318,8 +271,6 @@ class WebSocketConnection(Thread):
 
         Send a message up to client that he should re-subscribe to all
         channels.
-
-        :return:
         """
         self.log.debug("_unpause(): Clearing paused() Flag!")
         self.paused.clear()
@@ -327,20 +278,14 @@ class WebSocketConnection(Thread):
         self._resubscribe(soft=True)
 
     def _heartbeat_handler(self):
-        """Handles heartbeat messages.
-
-        :return:
-        """
+        """Handles heartbeat messages."""
         # Restart our timers since we received some data
         self.log.debug("_heartbeat_handler(): Received a heart beat "
                        "from connection!")
         self._start_timers()
 
     def _pong_handler(self):
-        """Handle a pong response.
-
-        :return:
-        """
+        """Handle a pong response."""
         # We received a Pong response to our Ping!
         self.log.debug("_pong_handler(): Received a Pong message!")
         self.pong_received = True
@@ -350,29 +295,29 @@ class WebSocketConnection(Thread):
 
         System messages include everything that arrives as a dict,
         or a list containing a heartbeat.
-
-        :param data:
-        :param ts:
-        :return:
         """
         self.log.debug("_system_handler(): Received a system message: %s", data)
         # Unpack the data
         event = data.pop('event')
         if event == 'pong':
-            self.log.debug("_system_handler(): Distributing %s to _pong_handler..",
-                      data)
+            self.log.debug(
+                "_system_handler(): Distributing %s to _pong_handler..", data
+            )
             self._pong_handler()
         elif event == 'info':
-            self.log.debug("_system_handler(): Distributing %s to _info_handler..",
-                      data)
+            self.log.debug(
+                "_system_handler(): Distributing %s to _info_handler..", data
+            )
             self._info_handler(data)
         elif event == 'error':
-            self.log.debug("_system_handler(): Distributing %s to _error_handler..",
-                      data)
+            self.log.debug(
+                "_system_handler(): Distributing %s to _error_handler..", data
+            )
             self._error_handler(data)
         elif event in ('subscribed', 'unsubscribed', 'conf', 'auth', 'unauth'):
-            self.log.debug("_system_handler(): Distributing %s to "
-                           "_response_handler..", data)
+            self.log.debug(
+                "_system_handler(): Distributing %s to _response_handler..", data
+            )
             self._response_handler(event, data, ts)
         else:
             self.log.error("Unhandled event: %s, data: %s", event, data)
@@ -381,21 +326,12 @@ class WebSocketConnection(Thread):
         """Handles responses to (un)subscribe and conf commands.
 
         Passes data up to client.
-
-        :param data:
-        :param ts:
-        :return:
         """
         self.log.debug("_response_handler(): Passing %s to client..", data)
         self.pass_to_client(event, data, ts)
 
     def _info_handler(self, data):
-        """Handles INFO messages from the API and issues relevant actions.
-
-        :param data:
-        :param ts:
-        :return:
-        """
+        """Handles INFO messages from the API and issues relevant actions."""
 
         def raise_exception():
             """Log info code as error and raise a ValueError."""
@@ -406,15 +342,18 @@ class WebSocketConnection(Thread):
             self.log.info('Initialized Client on API Version %s', data['version'])
             return
 
-        codes = {'20000': raise_exception, '20051': self.reconnect, '20060': self._pause,
-                 '20061': self._unpause}
-        info_message = {20000: 'Raise exception',
-                        20051: 'Stop/Restart websocket server '
-                                 '(please try to reconnect)',
-                        20060: 'Refreshing data from the trading engine; '
-                                 'please pause any acivity.',
-                        20061: 'Done refreshing data from the trading engine.'
-                                 ' Re-subscription advised.'}
+        codes = {
+            20000: raise_exception,
+            20051: self.reconnect,
+            20060: self._pause,
+            20061: self._unpause
+        }
+        info_message = {
+            20000: 'Raise exception',
+            20051: 'Stop/Restart websocket server (please try to reconnect)',
+            20060: 'Refreshing data from the trading engine; please pause any acivity.',
+            20061: 'Done refreshing data from the trading engine. Re-subscription advised.'
+        }
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
@@ -423,50 +362,28 @@ class WebSocketConnection(Thread):
             raise
 
     def _error_handler(self, data):
-        """Handles Error messages and logs them accordingly.
-
-        :param data:
-        :param ts:
-        :return:
-        """
-        errors = {10000: 'Unknown event',
-                  10001: 'Unknown pair',
-                  10300: 'Subscription Failed (generic)',
-                  10301: 'Already Subscribed',
-                  10302: 'Unknown channel',
-                  10400: 'Subscription Failed (generic)',
-                  10401: 'Not subscribed',
-                  }
+        """Handles Error messages and logs them accordingly."""
         try:
-            self.log.error(errors[data['code']])
+            self.log.error("%s: %s", data['code'], data['msg'])
         except KeyError as e:
-            # Unknown error code, log it and reconnect.
             log.exception(e)
-            self.log.error("Received unknown error Code in message %s! "
-                           "Reconnecting..", data)
+            self.log.error("Could not parse Error %r! Reconnecting..", data)
 
     def _data_handler(self, data, ts):
-        """Handles data messages by passing them up to the client.
-
-        :param data:
-        :param ts:
-        :return:
-        """
+        """Handles data messages by passing them up to the client."""
         # Pass the data up to the Client
-        self.log.debug("_data_handler(): Passing %s to client..",
-                  data)
+        self.log.debug("_data_handler(): Passing %s to client..", data)
         self.pass_to_client('data', data, ts)
 
     def _resubscribe(self, soft=False):
         """Resubscribes to all channels found in self.channel_configs.
 
         :param soft: if True, unsubscribes first.
-        :return: None
         """
         q_list = []
         while True:
             try:
-                identifier, q = self.channel_configs.popitem(last=True if soft else False)
+                identifier, q = self.channel_configs.popitem(last=soft)
             except KeyError:
                 break
             q_list.append((identifier, q.copy()))
@@ -521,100 +438,3 @@ class BitfinexEvents:
         LOGIN,
         HEARTBEAT,
     ]
-
-
-class BtfxWSSProtocol(websockets.WebSocketClientProtocol):
-    """Bitfinex Websocket Protocol based on the websockets library."""
-
-    #: Websocket address for the bitfinex websocket API.
-    ADDR = "wss://api.bitfinex.com/ws/2"
-
-    #: Mapping from info codes to info messages.
-    INFO_CODES = {
-        20000: 'Invalid User given! Please make sure the given ID is correct!',
-        20051: 'Stop/Restart websocket server '
-               '(please try to reconnect)',
-        20060: 'Refreshing data from the trading engine; '
-               'please pause any acivity.',
-        20061: 'Done refreshing data from the trading engine.'
-               ' Re-subscription advised.'
-    }
-
-    #: Mapping from error codes to error descriptions.
-    ERROR_CODES = {
-        10000: 'Unknown event',
-        10001: 'Unknown pair',
-        10300: 'Subscription Failed (generic)',
-        10301: 'Already Subscribed',
-        10302: 'Unknown channel',
-        10400: 'Subscription Failed (generic)',
-        10401: 'Not subscribed',
-    }
-
-    def recv(self) -> Tuple[str, Union[List, Dict], float]:
-        """Receive data from the websocket.
-
-        :raises BitfinexError:
-        :raises BitfinexInfo:
-        :raises UnhandledEvent:
-        :rtype: Tuple[str, Union[List, Dict], float]
-        """
-        try:
-            json_msg, recv_at = super(BtfxWSSProtocol, self).recv(), time.time()
-        except websockets.ConnectionClosed:
-            raise
-
-        parsed_msg = json.loads(json_msg)
-
-        # Dicts are system messages, lists are data.
-        if isinstance(parsed_msg, dict):
-            return self._system_event_handler(parsed_msg, recv_at)
-        else:
-            channel, *data = parsed_msg
-            if data == 'hb':
-                return self._hb_handler(channel, parsed_msg, recv_at)
-            return channel, data, recv_at
-
-    def _system_event_handler(self, msg: dict, recv_at: float) -> Tuple[str, Dict, float]:
-        """Handle Bitfinex System Events.
-
-        :param dict msg: The JSON-decoded system message received from bitfinex.
-        :param float recv_at: Unix timestamp at which this message was received.
-        :raises BitfinexInfo: if the event is of type ``info`` and a code is present.
-        :raises BitfinexError: if the event is of type ``error``
-        :raises UnhandledEvent:
-            If the event wasn't handled because it's unknown to us.
-        :return: event name, json-decoded message, timestamp tuple.
-        :rtype: Tuple[str, dict, float]
-        """
-        event = msg.pop('event')
-        code = msg.get('code')
-        version = msg.get('version')
-
-        if version:
-            log.info("Initialized client on API Version {}".format(version))
-
-        if event is BitfinexEvents.PONG:
-            self.pong_received = True
-        elif event is BitfinexEvents.INFO and code:
-            raise BitfinexInfo(code, self.INFO_CODES[code])
-        elif event is BitfinexEvents.ERROR:
-            raise BitfinexError(code, self.ERROR_CODES[code])
-        elif event not in BitfinexEvents.__all__:
-            raise UnhandledEvent(msg)
-
-        return event, msg, recv_at
-
-    def _hb_handler(self, channel: str, msg: List, recv_at: float):
-        """Handle heartbeat messages.
-
-        Does nothing, by default.
-        """
-        return channel, msg, recv_at
-
-    async def _check_pong(self):
-        """Check if we received a PONG message from bitfinex."""
-        if not self.pong_received:
-            raise NoPongReceived(
-                "Expected pong after 30s, but did not receive any data!"
-            )
