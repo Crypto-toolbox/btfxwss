@@ -358,16 +358,7 @@ class WebSocketConnection(Thread):
         self.pass_to_client(event, data, ts)
 
     def _info_handler(self, data):
-<<<<<<< HEAD
-        """
-        Handle INFO messages from the API and issues relevant actions.
-
-        :param data:
-        :param ts:
-        """
-=======
         """Handles INFO messages from the API and issues relevant actions."""
->>>>>>> dev
 
         def raise_exception():
             """Log info code as error and raise a ValueError."""
@@ -377,24 +368,6 @@ class WebSocketConnection(Thread):
         if 'code' not in data and 'version' in data:
             self.log.info('Initialized Client on API Version %s', data['version'])
             return
-
-<<<<<<< HEAD
-        info_message = {20000: 'Invalid User given! Please make sure the given ID is correct!',
-                        20051: 'Stop/Restart websocket server '
-                                 '(please try to reconnect)',
-                        20060: 'Refreshing data from the trading engine; '
-                                 'please pause any acivity.',
-                        20061: 'Done refreshing data from the trading engine.'
-                                 ' Re-subscription advised.'}
-
-        codes = {20051: self.reconnect, 20060: self._pause,
-                 20061: self._unpause}
-
-        if 'version' in data:
-            self.log.info("API version: %i", data['version'])
-            return
-
-=======
         codes = {
             20000: raise_exception,
             20051: self.reconnect,
@@ -407,7 +380,6 @@ class WebSocketConnection(Thread):
             20060: 'Refreshing data from the trading engine; please pause any acivity.',
             20061: 'Done refreshing data from the trading engine. Re-subscription advised.'
         }
->>>>>>> dev
         try:
             self.log.info(info_message[data['code']])
             codes[data['code']]()
@@ -417,48 +389,12 @@ class WebSocketConnection(Thread):
             raise
 
     def _error_handler(self, data):
-<<<<<<< HEAD
-        """
-        Handle Error messages and log them accordingly.
-
-        :param data:
-        :param ts:
-        """
-        errors = {10000: 'Unknown event',
-                  10001: 'Generic error',
-                  10008: 'Concurrency error',
-                  10020: 'Request parameters error',
-                  10050: 'Configuration setup failed',
-                  10100: 'Failed authentication',
-                  10111: 'Error in authentication request payload',
-                  10112: 'Error in authentication request signature',
-                  10113: 'Error in authentication request encryption',
-                  10114: 'Error in authentication request nonce',
-                  10200: 'Error in un-authentication request',
-                  10300: 'Subscription Failed (generic)',
-                  10301: 'Already Subscribed',
-                  10302: 'Unknown channel',
-                  10400: 'Subscription Failed (generic)',
-                  10401: 'Not subscribed',
-                  11000: 'Not ready, try again later',
-                  20000: 'User is invalid!',
-                  20051: 'Websocket server stopping',
-                  20060: 'Websocket server resyncing',
-                  20061: 'Websocket server resync complete'
-                  }
-        try:
-            self.log.error(errors[data['code']])
-        except KeyError:
-            self.log.error("Received unknown error Code in message %s! "
-                           "Reconnecting..", data)
-=======
         """Handles Error messages and logs them accordingly."""
         try:
             self.log.error("%s: %s", data['code'], data['msg'])
         except KeyError as e:
             log.exception(e)
             self.log.error("Could not parse Error %r! Reconnecting..", data)
->>>>>>> dev
 
     def _data_handler(self, data, ts):
         """Handles data messages by passing them up to the client."""
