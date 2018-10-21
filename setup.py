@@ -1,6 +1,6 @@
 from setuptools import setup
 
-setup(name='btfxwss', version='1.2.3', author='Nils Diefenbach',
+setup(name='btfxwss', version='1.2.4', author='Nils Diefenbach',
       author_email='nlsdfnbch.foss@kolabnow.com',
       url="https://github.com/nlsdfnbch/bitfinex_wss", license='MIT',
       packages=['btfxwss'], install_requires=['websocket-client'],
