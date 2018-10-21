@@ -406,9 +406,9 @@ class WebSocketConnection(Thread):
             self.log.info('Initialized Client on API Version %s', data['version'])
             return
 
-        codes = {'200000': raise_exception, '20051': self.reconnect, '20060': self._pause,
+        codes = {'20000': raise_exception, '20051': self.reconnect, '20060': self._pause,
                  '20061': self._unpause}
-        info_message = {20000: ',
+        info_message = {20000: 'Raise exception',
                         20051: 'Stop/Restart websocket server '
                                  '(please try to reconnect)',
                         20060: 'Refreshing data from the trading engine; '
